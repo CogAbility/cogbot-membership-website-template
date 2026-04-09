@@ -1,0 +1,79 @@
+@import url('https://fonts.googleapis.com/css2?family=Nunito:wght@400;600;700;800;900&display=swap');
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  :root {
+    --background: 200 40% 97%;
+    --foreground: 210 20% 20%;
+    --card: 0 0% 100%;
+    --card-foreground: 210 20% 20%;
+    --primary: 197 78% 53%;
+    --primary-foreground: 0 0% 100%;
+    --secondary: 2 76% 58%;
+    --secondary-foreground: 0 0% 100%;
+    --muted: 200 30% 93%;
+    --muted-foreground: 210 12% 50%;
+    --accent: 45 95% 62%;
+    --accent-foreground: 30 50% 18%;
+    --destructive: 0 84.2% 60.2%;
+    --destructive-foreground: 210 40% 98%;
+    --border: 200 25% 88%;
+    --input: 200 25% 88%;
+    --ring: 197 78% 53%;
+    --radius: 1rem;
+  }
+
+  html {
+    scroll-behavior: smooth;
+  }
+
+  body {
+    background-color: hsl(var(--background));
+    color: hsl(var(--foreground));
+    font-family: Nunito, sans-serif;
+  }
+
+  * {
+    border-color: hsl(var(--border));
+  }
+}
+
+@layer components {
+  .animated-gradient-hero {
+    background: linear-gradient(270deg, #2fb8ee, #25a0d0, #23a5e7, #20afdf);
+    background-size: 300% 300%;
+    animation: gradient-shift 12s ease infinite;
+  }
+
+  .btn-primary {
+    @apply inline-flex items-center justify-center px-6 py-3 rounded-full bg-primary text-primary-foreground font-bold text-sm transition-all duration-200 hover:opacity-90 hover:shadow-lg;
+  }
+
+  .btn-white {
+    @apply inline-flex items-center justify-center px-6 py-3 rounded-full bg-white text-primary font-bold text-sm transition-all duration-200 hover:bg-primary-foreground/90 hover:shadow-lg;
+  }
+
+  .btn-outline-white {
+    @apply inline-flex items-center justify-center px-6 py-3 rounded-full border-2 border-white/70 text-white font-bold text-sm transition-all duration-200 hover:bg-white/10;
+  }
+
+  .card {
+    @apply bg-card rounded-2xl p-5 sm:p-6 shadow-sm border border-border hover:shadow-md transition-shadow duration-200;
+  }
+
+  .section-heading {
+    @apply text-2xl sm:text-3xl md:text-4xl font-black text-foreground text-center;
+  }
+
+  .section-sub {
+    @apply text-sm sm:text-base text-muted-foreground text-center max-w-2xl mx-auto mt-3;
+  }
+}
+
+@keyframes gradient-shift {
+  0%, 100% { background-position: 0% 50%; }
+  50% { background-position: 100% 50%; }
+}
