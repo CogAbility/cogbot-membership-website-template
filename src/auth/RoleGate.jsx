@@ -9,7 +9,7 @@ import AccessDenied from '../pages/AccessDenied';
  * @param {ReactNode} children
  */
 export default function RoleGate({ requiredRole, children }) {
-  const { hasRole, isMember, isValidating, validationError } = useAuthorization();
+  const { hasRole, isMember, isValidating, validationError, geofenced, geofenceMessage } = useAuthorization();
 
   if (isValidating) {
     return (
@@ -20,6 +20,10 @@ export default function RoleGate({ requiredRole, children }) {
         </div>
       </div>
     );
+  }
+
+  if (geofenced) {
+    return <AccessDenied reason={geofenceMessage || 'This service is not available in your area.'} variant="geofenced" />;
   }
 
   if (validationError || !isMember) {

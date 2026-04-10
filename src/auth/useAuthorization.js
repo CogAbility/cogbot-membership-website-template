@@ -21,11 +21,15 @@ export function useAuthorization() {
   const [validationError, setValidationError] = useState(null);
   const [isMember, setIsMember] = useState(false);
   const [roles, setRoles] = useState([]);
+  const [geofenced, setGeofenced] = useState(false);
+  const [geofenceMessage, setGeofenceMessage] = useState(null);
 
   useEffect(() => {
     if (!isAuthenticated || !user) {
       setRoles([]);
       setIsMember(false);
+      setGeofenced(false);
+      setGeofenceMessage(null);
       setValidationError(null);
       return;
     }
@@ -55,10 +59,14 @@ export function useAuthorization() {
         if (!cancelled) {
           setIsMember(data.isMember);
           setRoles(data.roles || []);
+          setGeofenced(data.geofenced === true);
+          setGeofenceMessage(data.geofenceMessage || null);
 
           if (!data.isMember) {
             setValidationError(
-              'Your account is not authorized for this site. Please contact an administrator.'
+              data.geofenced
+                ? (data.geofenceMessage || 'This service is not available in your area.')
+                : 'Your account is not authorized for this site. Please contact an administrator.'
             );
           }
         }
@@ -81,5 +89,5 @@ export function useAuthorization() {
     [roles]
   );
 
-  return { isValidating, validationError, isMember, roles, hasRole };
+  return { isValidating, validationError, isMember, roles, hasRole, geofenced, geofenceMessage };
 }

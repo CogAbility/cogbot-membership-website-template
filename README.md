@@ -9,7 +9,12 @@ Browser (React SPA)
   │
   ├─ App ID popup login ──► IBM App ID ──► idToken
   │
-  └─ POST /auth/validate ──► CMG ──► Cloudant whitelist lookup
+  └─ POST /auth/validate ──► CMG
+                               │
+                               ├─ 1. Verify JWT (App ID JWKS)
+                               ├─ 2. Geofence check (if configured)
+                               │       └─ blocked → geofenced: true → "Not Available in Your Area"
+                               └─ 3. Cloudant whitelist lookup
                                        │
                                        ├─ isMember: true  → /members page
                                        └─ isMember: false → Access Denied
@@ -57,10 +62,31 @@ App will be at `http://localhost:5173`.
 3. User clicks sign in — App ID popup opens
 4. App ID returns `idToken` + `accessToken`, stored in `sessionStorage`
 5. `useAuthorization` hook fires `POST ${VITE_CMG_API}/auth/validate` with `{ idToken, namespace }`
-6. CMG verifies the JWT via JWKS, looks up the email in Cloudant, returns `{ isMember, email, roles }`
-7. `RoleGate` checks `isMember` and optionally a specific role name
-8. Authorized → `MembersPage` with full CogBot widget
-9. Not authorized → `AccessDenied` page
+6. CMG verifies the JWT via JWKS
+7. CMG runs geofence check (if configured for this namespace) — if blocked, returns `{ isMember: false, geofenced: true, geofenceMessage }`
+8. CMG looks up the email in Cloudant, returns `{ isMember, email, roles }`
+9. `RoleGate` checks `isMember` (and `geofenced`) and optionally a specific role name
+10. Authorized → `MembersPage` with full CogBot widget
+11. Geofenced → `AccessDenied` page with location icon and the configured `geofenceMessage`
+12. Not authorized → `AccessDenied` page with generic membership message
+
+## Geofencing
+
+Access to the members area can be restricted by the user's geographic location (state and/or county). Geofencing is configured entirely in CMG — no UI code changes are needed to enable, adjust, or disable it.
+
+When a user is blocked by geofencing, CMG returns:
+
+```json
+{
+  "isMember": false,
+  "geofenced": true,
+  "geofenceMessage": "Build-a-Brain is currently only available in Texas, Louisiana, and Oklahoma."
+}
+```
+
+`RoleGate` detects the `geofenced` flag and renders `AccessDenied` with a map-pin icon and the custom message from Cloudant, instead of the standard "Access Restricted" view.
+
+To configure geofencing for a namespace, see the [CMG README](../cmg-cogbot-membership-manager/README.md#geofencing).
 
 ## Project Structure
 

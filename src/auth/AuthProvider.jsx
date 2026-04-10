@@ -24,6 +24,8 @@ export function AuthProvider({ children }) {
   const [isMember, setIsMember] = useState(false);
   const [autoProvisioned, setAutoProvisioned] = useState(false);
   const [roles, setRoles] = useState([]);
+  const [geofenced, setGeofenced] = useState(false);
+  const [geofenceMessage, setGeofenceMessage] = useState(null);
   const [membershipStatus, setMembershipStatus] = useState('none');
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState(null);
@@ -49,12 +51,16 @@ export function AuthProvider({ children }) {
       setIsMember(data.isMember === true);
       setAutoProvisioned(data.autoProvisioned === true);
       setRoles(data.roles || []);
+      setGeofenced(data.geofenced === true);
+      setGeofenceMessage(data.geofenceMessage || null);
       setMembershipStatus(data.isMember ? 'member' : 'not_member');
     } catch (err) {
       console.error('AuthProvider: membership validation error', err);
       setIsMember(false);
       setAutoProvisioned(false);
       setRoles([]);
+      setGeofenced(false);
+      setGeofenceMessage(null);
       setMembershipStatus('error');
     }
   }, []);
@@ -103,6 +109,8 @@ export function AuthProvider({ children }) {
     setIsMember(false);
     setAutoProvisioned(false);
     setRoles([]);
+    setGeofenced(false);
+    setGeofenceMessage(null);
     setMembershipStatus('none');
     setError(null);
   }, []);
@@ -114,6 +122,8 @@ export function AuthProvider({ children }) {
       isMember,
       autoProvisioned,
       roles,
+      geofenced,
+      geofenceMessage,
       membershipStatus,
       isLoading,
       error,
