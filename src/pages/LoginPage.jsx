@@ -11,9 +11,9 @@ export default function LoginPage() {
           <span className="text-primary-foreground font-black text-2xl">B</span>
         </div>
 
-        <h1 className="text-xl sm:text-2xl font-black text-foreground mb-2">Welcome back</h1>
+        <h1 className="text-xl sm:text-2xl font-black text-foreground mb-2">Join Build a Brain</h1>
         <p className="text-muted-foreground text-xs sm:text-sm mb-8">
-          Sign in with your Build a Brain account to chat with Buddy.
+          Sign in or create an account to become a Build a Brain member — it's free!
         </p>
 
         {error && (
@@ -43,7 +43,7 @@ export default function LoginPage() {
         </button>
 
         <p className="text-xs text-muted-foreground mt-6 leading-relaxed">
-          Access is limited to authorized Build a Brain members. If you believe you should have access, please contact your administrator.
+          New here? No problem — signing in automatically creates your free membership.
         </p>
       </div>
     </div>

@@ -5,11 +5,11 @@ import Testimonials from '../components/Testimonials';
 import About from '../components/About';
 
 export default function LandingPage() {
-  const { isAuthenticated } = useAuth();
+  const { isMember } = useAuth();
 
   return (
     <main>
-      <Hero isAuthenticated={isAuthenticated} />
+      <Hero isMember={isMember} />
       <Features />
       <Testimonials />
       <About />
