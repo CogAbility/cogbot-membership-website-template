@@ -80,7 +80,7 @@ export default function Hero({ isMember }) {
           {/* Chat iframe */}
           <div className="flex-1 min-h-0">
             <iframe
-              src="/buddy-chat.html"
+              src={`${import.meta.env.VITE_COGBOT_HOST}/mc_0091_full_screen.html`}
               style={{ width: '100%', height: '100%', border: 'none', display: 'block', minHeight: '300px' }}
               title="Chat with Buddy"
               allow="microphone"
