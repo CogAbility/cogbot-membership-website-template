@@ -6,6 +6,7 @@ import Header from './components/Header';
 import Footer from './components/Footer';
 import LandingPage from './pages/LandingPage';
 import MembersPage from './pages/MembersPage';
+import CallbackPage from './pages/CallbackPage';
 
 export default function App() {
   return (
@@ -26,6 +27,7 @@ export default function App() {
                   </ProtectedRoute>
                 }
               />
+              <Route path="/callback" element={<CallbackPage />} />
               <Route path="*" element={<LandingPage />} />
             </Routes>
           </div>

@@ -1,4 +1,7 @@
-import { Link } from 'react-router-dom';
+import { Link } from 'react-router-dom'
+import config from '@/site.config'
+
+const { footer } = config
 
 export default function Footer() {
   return (
@@ -8,38 +11,53 @@ export default function Footer() {
           {/* Brand */}
           <div className="flex items-center gap-2">
             <div className="w-7 h-7 rounded-full bg-primary-foreground/20 border border-primary-foreground/30 flex items-center justify-center">
-              <span className="text-white font-black text-xs">B</span>
+              <span className="text-white font-black text-xs">{footer.brandName[0]}</span>
             </div>
             <div>
-              <span className="block font-black text-white text-sm">Buddy</span>
-              <span className="block text-[10px] text-primary-foreground/50 leading-none">Build a Brain</span>
+              <span className="block font-black text-white text-sm">{footer.brandName}</span>
+              <span className="block text-[10px] text-primary-foreground/50 leading-none">{footer.brandSubtitle}</span>
             </div>
           </div>
 
           {/* Nav links */}
           <nav className="flex flex-wrap items-center justify-center gap-4 sm:gap-6">
-            <a href="/#features" className="text-primary-foreground/60 text-[11px] sm:text-xs font-semibold hover:text-primary-foreground/90 transition-colors">Features</a>
-            <a href="/#testimonials" className="text-primary-foreground/60 text-[11px] sm:text-xs font-semibold hover:text-primary-foreground/90 transition-colors">Testimonials</a>
-            <a href="/#about" className="text-primary-foreground/60 text-[11px] sm:text-xs font-semibold hover:text-primary-foreground/90 transition-colors">About</a>
-            <Link to="/members" className="text-primary-foreground/60 text-[11px] sm:text-xs font-semibold hover:text-primary-foreground/90 transition-colors">Member Login</Link>
+            {footer.navLinks.map((link) =>
+              link.internal ? (
+                <Link
+                  key={link.label}
+                  to={link.href}
+                  className="text-primary-foreground/60 text-[11px] sm:text-xs font-semibold hover:text-primary-foreground/90 transition-colors"
+                >
+                  {link.label}
+                </Link>
+              ) : (
+                <a
+                  key={link.label}
+                  href={link.href}
+                  className="text-primary-foreground/60 text-[11px] sm:text-xs font-semibold hover:text-primary-foreground/90 transition-colors"
+                >
+                  {link.label}
+                </a>
+              )
+            )}
           </nav>
         </div>
 
         <div className="flex flex-col sm:flex-row items-center justify-between gap-3 pt-5 sm:pt-6 text-center sm:text-left">
           <p className="text-primary-foreground/40 text-[11px] sm:text-xs">
             &copy; {new Date().getFullYear()}{' '}
-            <a href="https://buildabrain.org" target="_blank" rel="noopener noreferrer" className="hover:text-primary-foreground/70 transition-colors">
-              Build A Brain, Build A Life, Build A Community LLC
+            <a href={footer.copyrightUrl} target="_blank" rel="noopener noreferrer" className="hover:text-primary-foreground/70 transition-colors">
+              {footer.copyright}
             </a>
           </p>
           <p className="text-primary-foreground/40 text-[11px] sm:text-xs">
-            AI by{' '}
-            <a href="https://cogability.net" target="_blank" rel="noopener noreferrer" className="hover:text-primary-foreground/70 transition-colors">
-              CogAbility
+            {footer.poweredByLabel}{' '}
+            <a href={footer.poweredByUrl} target="_blank" rel="noopener noreferrer" className="hover:text-primary-foreground/70 transition-colors">
+              {footer.poweredByName}
             </a>
           </p>
         </div>
       </div>
     </footer>
-  );
+  )
 }

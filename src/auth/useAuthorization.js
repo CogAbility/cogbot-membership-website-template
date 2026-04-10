@@ -1,8 +1,8 @@
 import { useState, useEffect, useCallback } from 'react';
 import { useAuth } from './AuthProvider';
 
-const CMG_API = import.meta.env.VITE_CMG_API || '';
-const NAMESPACE = import.meta.env.VITE_CMG_NAMESPACE || 'bab';
+const CMG_API = import.meta.env.VITE_CMG_URL || 'http://localhost:3010';
+const NAMESPACE = import.meta.env.VITE_SITE_NAMESPACE || 'bab';
 
 /**
  * Validates the current user against the CMG (CogBot Membership Gateway)

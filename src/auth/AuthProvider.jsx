@@ -1,5 +1,5 @@
 import { createContext, useContext, useState, useCallback, useRef } from 'react';
-import AppID from 'ibmcloud-appid-js';
+import { getUserManager } from './userManager';
 
 /**
  * AuthContext provides:
@@ -29,14 +29,7 @@ export function AuthProvider({ children }) {
   const [membershipStatus, setMembershipStatus] = useState('none');
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState(null);
-  const appIdRef = useRef(null);
-
-  const getAppId = useCallback(() => {
-    if (!appIdRef.current) {
-      appIdRef.current = new AppID();
-    }
-    return appIdRef.current;
-  }, []);
+  const loginInProgressRef = useRef(false);
 
   const validateMembership = useCallback(async (idToken) => {
     setMembershipStatus('checking');
@@ -66,41 +59,38 @@ export function AuthProvider({ children }) {
   }, []);
 
   const login = useCallback(async () => {
+    if (loginInProgressRef.current) return false;
+    loginInProgressRef.current = true;
     setIsLoading(true);
     setError(null);
     try {
-      const appId = getAppId();
-      await appId.init({
-        clientId: import.meta.env.VITE_APPID_CLIENT_ID,
-        discoveryEndpoint: import.meta.env.VITE_APPID_DISCOVERY_ENDPOINT,
-      });
-      const tokens = await appId.signin();
+      const oidcUser = await getUserManager().signinPopup();
 
-      if (tokens.idToken) {
-        sessionStorage.setItem('cam_token', tokens.idToken);
-        sessionStorage.setItem('cam_access_token', tokens.accessToken);
-      }
+      sessionStorage.setItem('cam_token', oidcUser.id_token);
+      sessionStorage.setItem('cam_access_token', oidcUser.access_token);
 
-      const payload = parseJwt(tokens.idToken);
+      const p = oidcUser.profile;
       setUser({
-        uid: payload.sub,
-        email: payload.email || '',
-        firstName: payload.given_name || payload.name?.split(' ')[0] || '',
-        lastName: payload.family_name || payload.name?.split(' ').slice(1).join(' ') || '',
-        idToken: tokens.idToken,
-        accessToken: tokens.accessToken,
-        raw: payload,
+        uid: p.sub,
+        email: p.email || '',
+        firstName: p.given_name || p.name?.split(' ')[0] || '',
+        lastName: p.family_name || p.name?.split(' ').slice(1).join(' ') || '',
+        idToken: oidcUser.id_token,
+        accessToken: oidcUser.access_token,
+        raw: p,
       });
 
-      // Validate membership against CMG immediately after login
-      await validateMembership(tokens.idToken);
+      await validateMembership(oidcUser.id_token);
+      return true;
     } catch (err) {
       console.error('AuthProvider: login error', err);
       setError(err?.message || 'Login failed. Please try again.');
+      return false;
     } finally {
+      loginInProgressRef.current = false;
       setIsLoading(false);
     }
-  }, [getAppId, validateMembership]);
+  }, [validateMembership]);
 
   const logout = useCallback(() => {
     sessionStorage.removeItem('cam_token');
@@ -139,13 +129,4 @@ export function useAuth() {
   const ctx = useContext(AuthContext);
   if (!ctx) throw new Error('useAuth must be used inside <AuthProvider>');
   return ctx;
-}
-
-function parseJwt(token) {
-  try {
-    const base64 = token.split('.')[1].replace(/-/g, '+').replace(/_/g, '/');
-    return JSON.parse(atob(base64));
-  } catch {
-    return {};
-  }
 }

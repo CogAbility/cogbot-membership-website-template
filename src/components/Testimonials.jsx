@@ -1,47 +1,25 @@
-import { Link } from 'react-router-dom';
+import { Link } from 'react-router-dom'
+import config from '@/site.config'
 
-const testimonials = [
-  {
-    quote:
-      "Buddy helped me understand what's actually normal during sleep regressions. I stopped panicking and started trusting the process.",
-    name: 'Sarah M.',
-    role: 'Mom of a 10-month-old',
-    initials: 'SM',
-  },
-  {
-    quote:
-      "I love that the advice is backed by real science — not random internet opinions. It's like having a pediatrician friend on speed dial.",
-    name: 'James R.',
-    role: 'First-time dad',
-    initials: 'JR',
-  },
-  {
-    quote:
-      'The local resources feature is a game changer. I found a parent support group five minutes from my house that I never knew existed.',
-    name: 'Maria L.',
-    role: 'Mom of two',
-    initials: 'ML',
-  },
-];
+const { testimonials } = config
 
 export default function Testimonials() {
   return (
     <section id="testimonials" className="bg-foreground py-6 sm:py-8 px-3 sm:px-4 md:px-8 -mt-px">
       <div className="max-w-4xl mx-auto">
         <h2 className="text-2xl sm:text-3xl md:text-4xl font-black text-primary-foreground text-center">
-          What Parents Are Saying
+          {testimonials.heading}
         </h2>
         <p className="text-primary-foreground/70 text-xs sm:text-base text-center max-w-xl mx-auto mt-3 mb-8 sm:mb-12">
-          Real stories from real parents in the Build A Brain community.
+          {testimonials.subheading}
         </p>
 
         <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 sm:gap-6">
-          {testimonials.map((t) => (
+          {testimonials.items.map((t) => (
             <div
               key={t.name}
               className="bg-primary-foreground/10 border border-primary-foreground/20 rounded-2xl p-5 sm:p-6 flex flex-col"
             >
-              {/* Stars */}
               <div className="flex gap-1 mb-4">
                 {[...Array(5)].map((_, i) => (
                   <svg key={i} className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-accent" fill="currentColor" viewBox="0 0 20 20">
@@ -67,16 +45,15 @@ export default function Testimonials() {
           ))}
         </div>
 
-        {/* CTA inside the dark section */}
         <div className="flex items-center justify-center gap-4 pt-8 sm:pt-10 pb-2 sm:pb-4 px-4">
           <Link
             to="/members"
             className="inline-flex items-center justify-center px-7 py-3 rounded-full bg-white text-primary font-black text-sm transition-all duration-200 hover:bg-white/90 hover:shadow-xl"
           >
-            Chat with Buddy
+            {testimonials.ctaLabel}
           </Link>
         </div>
       </div>
     </section>
-  );
+  )
 }

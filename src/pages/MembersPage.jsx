@@ -1,10 +1,13 @@
-import { useAuth } from '../auth/AuthProvider';
-import CogBotEmbed from '../components/CogBotEmbed';
+import { useAuth } from '../auth/AuthProvider'
+import CogBotEmbed from '../components/CogBotEmbed'
+import config from '@/site.config'
+
+const { members } = config
 
 export default function MembersPage() {
-  const { user, logout } = useAuth();
+  const { user, logout } = useAuth()
 
-  const firstName = user?.firstName || user?.email?.split('@')[0] || 'Member';
+  const firstName = user?.firstName || user?.email?.split('@')[0] || 'Member'
 
   return (
     <main className="min-h-[calc(100vh-64px)] bg-background">
@@ -16,7 +19,7 @@ export default function MembersPage() {
               Hi, {firstName} 👋
             </h1>
             <p className="text-muted-foreground text-[10px] sm:text-xs mt-0.5">
-              {user?.email} &bull; Build a Brain Member
+              {user?.email} &bull; {members.memberBadge}
             </p>
           </div>
           <button
@@ -34,12 +37,12 @@ export default function MembersPage() {
       {/* Main content */}
       <div className="max-w-4xl mx-auto px-3 sm:px-4 md:px-6 py-8 sm:py-10">
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 sm:gap-8">
-          {/* CogBot widget — 2/3 width on large screens */}
+          {/* Chat — 2/3 width on large screens */}
           <div className="lg:col-span-2">
             <div className="mb-4">
-              <h2 className="text-lg sm:text-xl font-black text-foreground">Chat with Buddy</h2>
+              <h2 className="text-lg sm:text-xl font-black text-foreground">{members.chatHeading}</h2>
               <p className="text-muted-foreground text-xs sm:text-sm mt-1">
-                Ask anything about early childhood development, local resources, or parenting guidance.
+                {members.chatSubheading}
               </p>
             </div>
             <CogBotEmbed height="640px" />
@@ -49,15 +52,9 @@ export default function MembersPage() {
           <div className="space-y-4">
             {/* Quick tips */}
             <div className="card">
-              <h3 className="font-black text-foreground mb-3 text-sm">Quick Tips</h3>
+              <h3 className="font-black text-foreground mb-3 text-sm">{members.quickTipsHeading}</h3>
               <ul className="space-y-2">
-                {[
-                  "Ask about sleep milestones for your child's age",
-                  'Find local pediatricians and family resources',
-                  'Get tips for managing toddler tantrums',
-                  'Learn about age-appropriate activities',
-                  "Understand what's developmentally normal",
-                ].map((tip) => (
+                {members.quickTips.map((tip) => (
                   <li key={tip} className="flex items-start gap-2 text-[11px] sm:text-xs text-muted-foreground">
                     <span className="text-primary mt-0.5 flex-shrink-0">→</span>
                     {tip}
@@ -69,22 +66,22 @@ export default function MembersPage() {
             {/* Member info */}
             <div className="animated-gradient-hero rounded-2xl p-5 sm:p-6">
               <div className="text-2xl mb-2">🧠</div>
-              <h3 className="font-black text-white mb-1 text-sm">Build a Brain Member</h3>
+              <h3 className="font-black text-white mb-1 text-sm">{members.memberBadge}</h3>
               <p className="text-primary-foreground/80 text-[11px] sm:text-xs leading-relaxed">
-                As a member, you have unlimited access to Buddy and all Build a Brain resources.
+                {members.memberDescription}
               </p>
             </div>
 
-            {/* About card */}
+            {/* About bot */}
             <div className="card">
-              <h3 className="font-black text-foreground mb-2 text-sm">About Buddy</h3>
+              <h3 className="font-black text-foreground mb-2 text-sm">{members.aboutBotHeading}</h3>
               <p className="text-muted-foreground text-[11px] sm:text-xs leading-relaxed">
-                Buddy is an AI CogBot by CogAbility. All responses are evidence-based and sourced from vetted expert resources.
+                {members.aboutBotDescription}
               </p>
             </div>
           </div>
         </div>
       </div>
     </main>
-  );
+  )
 }

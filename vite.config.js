@@ -1,7 +1,26 @@
-import { defineConfig } from 'vite'
+import { defineConfig, loadEnv } from 'vite'
 import react from '@vitejs/plugin-react'
+import path from 'path'
 
-// https://vite.dev/config/
-export default defineConfig({
-  plugins: [react()],
+export default defineConfig(({ mode }) => {
+  const env = loadEnv(mode, process.cwd(), 'VITE_')
+
+  return {
+    plugins: [react()],
+    resolve: {
+      alias: {
+        '@/site.config': path.resolve(__dirname, 'site.config.js'),
+      },
+    },
+    server: {
+      proxy: {
+        '/cogbot-api': {
+          target: env.VITE_COGBOT_HOST || 'https://cogbot-widget.mc-cap1.cogability.net',
+          changeOrigin: true,
+          rewrite: (p) => p.replace(/^\/cogbot-api/, ''),
+          secure: true,
+        },
+      },
+    },
+  }
 })
