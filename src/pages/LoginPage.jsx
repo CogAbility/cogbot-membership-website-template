@@ -23,7 +23,7 @@ export default function LoginPage() {
         )}
 
         <button
-          onClick={login}
+          onClick={() => login('/members')}
           disabled={isLoading}
           className="btn-primary w-full py-3.5 text-sm sm:text-base disabled:opacity-60 disabled:cursor-not-allowed flex items-center justify-center gap-2"
         >

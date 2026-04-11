@@ -1,4 +1,4 @@
-import { createContext, useContext, useState, useCallback, useRef } from 'react';
+import { createContext, useContext, useState, useCallback } from 'react';
 import { getUserManager } from './userManager';
 
 /**
@@ -11,7 +11,8 @@ import { getUserManager } from './userManager';
  *   membershipStatus - "none" | "checking" | "member" | "not_member" | "error"
  *   isLoading        - boolean (true during login/logout)
  *   error            - string | null
- *   login()          - initiates App ID popup signin then validates membership
+ *   login(returnTo)  - redirects to App ID for authentication
+ *   handleCallback() - processes the redirect callback, returns true on success
  *   logout()         - clears session
  */
 const AuthContext = createContext(null);
@@ -29,7 +30,6 @@ export function AuthProvider({ children }) {
   const [membershipStatus, setMembershipStatus] = useState('none');
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState(null);
-  const loginInProgressRef = useRef(false);
 
   const validateMembership = useCallback(async (idToken) => {
     setMembershipStatus('checking');
@@ -58,13 +58,18 @@ export function AuthProvider({ children }) {
     }
   }, []);
 
-  const login = useCallback(async () => {
-    if (loginInProgressRef.current) return false;
-    loginInProgressRef.current = true;
+  const login = useCallback(async (returnTo = '/members') => {
+    sessionStorage.setItem('auth_return_to', returnTo);
+    await getUserManager().signinRedirect();
+  }, []);
+
+  const handleCallback = useCallback(async () => {
     setIsLoading(true);
     setError(null);
     try {
-      const oidcUser = await getUserManager().signinPopup();
+      console.log('handleCallback: starting signinRedirectCallback');
+      const oidcUser = await getUserManager().signinRedirectCallback();
+      console.log('handleCallback: got user', oidcUser?.profile?.email);
 
       sessionStorage.setItem('cam_token', oidcUser.id_token);
       sessionStorage.setItem('cam_access_token', oidcUser.access_token);
@@ -83,11 +88,10 @@ export function AuthProvider({ children }) {
       await validateMembership(oidcUser.id_token);
       return true;
     } catch (err) {
-      console.error('AuthProvider: login error', err);
+      console.error('AuthProvider: callback error', err);
       setError(err?.message || 'Login failed. Please try again.');
       return false;
     } finally {
-      loginInProgressRef.current = false;
       setIsLoading(false);
     }
   }, [validateMembership]);
@@ -95,6 +99,7 @@ export function AuthProvider({ children }) {
   const logout = useCallback(() => {
     sessionStorage.removeItem('cam_token');
     sessionStorage.removeItem('cam_access_token');
+    sessionStorage.removeItem('auth_return_to');
     setUser(null);
     setIsMember(false);
     setAutoProvisioned(false);
@@ -118,6 +123,7 @@ export function AuthProvider({ children }) {
       isLoading,
       error,
       login,
+      handleCallback,
       logout,
     }}>
       {children}

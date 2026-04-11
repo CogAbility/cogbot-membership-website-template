@@ -21,10 +21,7 @@ export default function Header() {
     return () => document.removeEventListener('mousedown', handleClickOutside)
   }, [])
 
-  const handleLogin = async () => {
-    await login()
-    navigate('/members')
-  }
+  const handleLogin = () => login('/members')
 
   const handleUserIconClick = () => {
     if (isAuthenticated) {

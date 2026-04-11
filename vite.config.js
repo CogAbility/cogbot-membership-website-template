@@ -13,6 +13,7 @@ export default defineConfig(({ mode }) => {
       },
     },
     server: {
+      port: 5174,
       proxy: {
         '/cogbot-api': {
           target: env.VITE_COGBOT_HOST || 'https://cogbot-widget.mc-cap1.cogability.net',
