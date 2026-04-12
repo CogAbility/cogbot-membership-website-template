@@ -33,6 +33,34 @@ The UI is a **static SPA** with zero backend code. All membership logic lives in
 
 ---
 
+## What You'll Need
+
+Before you start, gather these two things:
+
+### From CogAbility (your credentials sheet)
+
+Your CogAbility contact will provide a credentials sheet with these values:
+
+| Value | What it is |
+|---|---|
+| App ID Client ID | Identifies your authentication app |
+| App ID OAuth Server URL | IBM App ID endpoint for login |
+| CMG URL | Your CogBot Membership Gateway instance |
+| Site Namespace | Ties your site to the correct member roles |
+| CogBot Host URL | Your CogBot widget server |
+| CogBot ID | The specific CogBot for your site |
+
+If you don't have these yet, reach out to your CogAbility contact before starting.
+
+### From you
+
+- Your organization's **name, branding, and content** (taglines, feature descriptions, testimonials, etc.)
+- **Logo and icon images** (any format: SVG, WebP, PNG)
+- A **GitHub account** (free — [github.com](https://github.com))
+- A **hosting account** on one of: [Lovable](https://lovable.dev), [Bolt.new](https://bolt.new), [Replit](https://replit.com), [Vercel](https://vercel.com), or [Netlify](https://netlify.com)
+
+---
+
 ## Getting Started
 
 ### 1. Create your repo from this template
@@ -41,12 +69,16 @@ Click **Use this template** on GitHub to create your own repo. Do not fork — t
 
 ### 2. Customize the config
 
-Edit `site.config.js` at the project root. This is the only file you need to change to rebrand the site:
+Edit `site.config.js` at the project root. This is the only file you need to change to rebrand the site — it controls every user-visible string, page title, meta description, and social sharing tags:
 
 ```js
 export default {
   siteName: 'Your Organization Name',
   botName: 'Your Bot Name',
+  meta: {
+    title: 'Your Bot | Your Org',
+    description: 'A short description for search engines and social sharing.',
+  },
   hero: {
     tagline: 'Your hero tagline',
     // ...
@@ -62,22 +94,52 @@ You can edit this file manually, or open the project in **Lovable**, **Cursor**,
 
 ### 3. Replace the images
 
-Put your own images in `public/`:
-- `public/buddy-icon.webp` — chat avatar shown in the hero and header
-- `public/bab-full-logo.webp` — org logo shown in the hero "Presented by" section
+Put your own images in `public/`, replacing the placeholders:
+- `public/bot-icon.svg` — chat avatar shown in the hero and header
+- `public/org-logo.svg` — org logo shown in the hero "Presented by" section
 - `public/favicon.svg` — browser tab icon
 
+Then update the `images:` section in `site.config.js` if you use different filenames or formats (e.g. `.webp` or `.png`).
+
 ### 4. Set your credentials
+
+Copy the environment template and fill in the values from your credentials sheet:
 
 ```bash
 cp .env.example .env
 ```
 
-Edit `.env` and fill in your service credentials. See [Environment Variables](#environment-variables) below.
+Edit `.env` with the values from your CogAbility credentials sheet. See [Environment Variables](#environment-variables) below for details on each one.
 
 ### 5. Deploy
 
 Push to GitHub and connect to your hosting platform. See [Deploying](#deploying) below.
+
+---
+
+## Customization Checklist
+
+Before going live, make sure you've updated everything. Use this as a quick reference:
+
+- [ ] **`site.config.js`** — replace ALL sample content:
+  - [ ] `siteName`, `botName`, `orgName`, `orgUrl`
+  - [ ] `meta.title` and `meta.description` (page title, SEO, social sharing)
+  - [ ] `header` — project badge, sign-in button label
+  - [ ] `hero` — tagline, subtitle, stats
+  - [ ] `features` — section heading and all feature cards
+  - [ ] `testimonials` — section heading and all testimonial cards
+  - [ ] `about` — heading, paragraphs, checklist items, CTA links
+  - [ ] `members` — member page headings, quick tips, bot description
+  - [ ] `onboarding` — welcome heading, step labels
+  - [ ] `profile` — headings and labels
+  - [ ] `footer` — brand name, copyright, nav links
+- [ ] **`public/`** — replace placeholder images with your own:
+  - [ ] `bot-icon.svg` (or your own format) — chat avatar
+  - [ ] `org-logo.svg` (or your own format) — org logo
+  - [ ] `favicon.svg` — browser tab icon
+- [ ] **`.env`** — all 6 credentials from your CogAbility sheet
+- [ ] **`src/index.css`** — theme colors (optional — has sensible defaults)
+- [ ] **CORS** — send your production URL to CogAbility (see [After Deploying](#after-deploying-all-platforms))
 
 ---
 
@@ -90,6 +152,7 @@ Edit `site.config.js`. Every user-visible string lives here:
 | Section | What it controls |
 |---|---|
 | `siteName`, `botName` | Core identity used throughout the site |
+| `meta` | Page title, meta description, OG tags (SEO and social sharing) |
 | `images` | Paths to logo and icon files in `public/` |
 | `header` | Project badge, sign-in button label, member badge |
 | `hero` | Tagline, subtitle, stats, chat label |
@@ -100,6 +163,20 @@ Edit `site.config.js`. Every user-visible string lives here:
 | `onboarding` | Wizard headings, step labels, gender/month options, skip label |
 | `profile` | Profile page headings, save label, change password label |
 | `footer` | Brand name, nav links, copyright, powered-by |
+
+### Page title and SEO
+
+The page `<title>`, meta description, Open Graph, and Twitter Card tags are all generated automatically from `site.config.js` at build time. Edit the `meta` section:
+
+```js
+meta: {
+  title: 'Your Bot Name | Your Org',
+  description: 'A description for search engines and link previews.',
+  ogImage: '/og-image.png',  // optional — social sharing image
+}
+```
+
+If you omit the `meta` section, the title defaults to `botName | siteName` and the description defaults to `hero.subtitle`.
 
 ### Colors and theme
 
@@ -113,7 +190,7 @@ Edit the CSS custom properties in `src/index.css` under `:root`:
 }
 ```
 
-All colors use HSL format. You can ask an AI tool: "Change the primary color to royal blue."
+All colors use HSL format. The hero gradient adapts automatically to your `--primary` color. You can ask an AI tool: "Change the primary color to royal blue."
 
 ### Images
 
@@ -155,7 +232,7 @@ User profile data is persisted in Pinecone via **be-pfc** (the Prefrontal Cortex
 
 ## Environment Variables
 
-Copy `.env.example` to `.env` and fill in your values:
+Copy `.env.example` to `.env` and fill in the values from your CogAbility credentials sheet:
 
 | Variable | Description |
 |---|---|
@@ -172,19 +249,46 @@ Never commit `.env` to git — it is listed in `.gitignore`.
 
 ## Deploying
 
-### Platform hosting (recommended)
+### Lovable (step-by-step example)
 
-The easiest option. Connect your GitHub repo to one of these platforms and they handle deployment automatically:
+[Lovable](https://lovable.dev) is an AI-powered web app builder that can host your site and let you make changes using natural language. Here's how to deploy:
 
-**Lovable** — import your repo and deploy with one click. Set environment variables in project settings.
+1. **Push your customized repo to GitHub** — make sure `site.config.js`, your images, and `.env.example` are committed (never commit `.env` itself).
+2. **Create a Lovable project** — go to [lovable.dev](https://lovable.dev), create a new project, and choose **Import from GitHub**. Select your repo.
+3. **Set environment variables** — in your Lovable project, go to **Settings** (gear icon) and find the **Environment Variables** or **Secrets** section. Add each `VITE_*` variable from your credentials sheet:
+   - `VITE_APPID_CLIENT_ID`
+   - `VITE_APPID_OAUTH_SERVER_URL`
+   - `VITE_CMG_URL`
+   - `VITE_SITE_NAMESPACE`
+   - `VITE_COGBOT_HOST`
+   - `VITE_COGBOT_ID`
+4. **Deploy** — Lovable automatically builds and deploys your site. The build command is `npm run build` and the output directory is `dist`.
+5. **Copy your live URL** — once deployed, copy the URL that Lovable gives you (e.g. `https://your-project.lovable.app`).
+6. **Send your URL to CogAbility** — your CogAbility contact needs to add your production URL to the CogBot server's CORS allowlist. Chat will not work until this is done.
+7. **Make changes** — use Lovable's AI chat to make further branding or content changes. Ask things like "Change the hero tagline to..." or "Add a new testimonial."
 
-**Vercel / Netlify** — connect your GitHub repo. Set `VITE_*` environment variables in the platform dashboard.
-- Build command: `npm run build`
-- Output directory: `dist`
+### Bolt.new
 
-**Replit** — import from GitHub and run `npm run build`. Set secrets via the Replit Secrets panel.
+Import your GitHub repo into [Bolt.new](https://bolt.new). Set the `VITE_*` environment variables in the project settings. Bolt handles the build and deployment automatically.
 
-### Running locally
+### Replit
+
+Import your repo from GitHub into [Replit](https://replit.com). Set environment variables via the **Secrets** panel (lock icon in the sidebar). Run `npm run build` to build, or `npm run dev` for development.
+
+### Vercel / Netlify
+
+Connect your GitHub repo in the platform dashboard. Configure:
+- **Build command:** `npm run build`
+- **Output directory:** `dist`
+- **Environment variables:** add all `VITE_*` variables
+
+### After deploying (all platforms)
+
+**CORS setup is required.** After your site is live, send your production URL to your CogAbility contact so they can add it to the CogBot server's CORS allowlist. Without this, chat requests will fail with CORS errors.
+
+---
+
+## Running Locally
 
 ```bash
 npm install
@@ -197,7 +301,23 @@ The dev server starts at `http://localhost:5174`. During development, `/cogbot-a
 
 ---
 
+## Troubleshooting
+
+| Problem | Likely cause | Fix |
+|---|---|---|
+| Chat shows a CORS error in the browser console | Your production domain isn't in the CogBot CORS allowlist | Send your live URL to your CogAbility contact |
+| Blank page after deploying | One or more `VITE_*` environment variables are missing | Check that all 6 are set in your platform's settings and redeploy |
+| Sign-in popup doesn't appear or is blocked | Browser popup blocker | Allow popups for your site's domain, or try a different browser |
+| "Access Denied" after signing in | Your email isn't in the Cloudant member whitelist | Ask your CogAbility contact to add your email, or enable auto-provisioning for your namespace |
+| Images are broken or show "Replace me" | Placeholder images haven't been replaced | Add your own images to `public/` and update `images:` paths in `site.config.js` |
+| Browser tab still shows old title | Stale build cache | Clear the build cache in your hosting platform and redeploy |
+| Login works but chat says "initializing" forever | `VITE_COGBOT_HOST` or `VITE_COGBOT_ID` is wrong | Double-check these values against your credentials sheet |
+
+---
+
 ## Pulling Template Updates
+
+> **Note:** This requires git command-line knowledge. If you're using Lovable or another AI tool and aren't comfortable with git, your CogAbility contact can help you pull updates when needed.
 
 When this template is updated (bug fixes, new features), you can pull the changes into your client repo:
 
@@ -218,13 +338,14 @@ Since your customizations live only in `site.config.js`, `.env`, and `public/`, 
 
 ```
 cogbot-membership-website-template/
-  site.config.js          ← Edit this to customize branding and content
+  site.config.js          ← Edit this to customize branding, content, and SEO
   .env                    ← Your service credentials (gitignored)
   .env.example            ← Env var template (committed)
+  index.html              ← Auto-generated from site.config.js (do not edit directly)
   public/
-    buddy-icon.webp        ← Chat avatar icon
-    bab-full-logo.webp     ← Org logo
-    favicon.svg            ← Browser tab icon
+    bot-icon.svg            ← Chat avatar icon (replace with your own)
+    org-logo.svg            ← Org logo (replace with your own)
+    favicon.svg             ← Browser tab icon
   src/
     auth/
       AuthProvider.jsx     App ID login/logout and user state
@@ -258,7 +379,7 @@ cogbot-membership-website-template/
     App.jsx                Routes
     main.jsx               Entry point
     index.css              Design tokens and global styles
-  vite.config.js           Build config and dev proxy
+  vite.config.js           Build config, dev proxy, and site meta plugin
 ```
 
 ---
@@ -291,7 +412,7 @@ This is a pure static SPA. All server-side logic lives in external services:
 
 During local development, `/cogbot-api` requests are proxied through the Vite dev server to `VITE_COGBOT_HOST`, so no CORS configuration is needed locally.
 
-For production (platform hosting), the CogBot server must allow your deployed domain in its CORS settings.
+For production (platform hosting), the CogBot server must allow your deployed domain in its CORS settings. After deploying, send your production URL to your CogAbility contact and they will configure this for you.
 
 ### Geofencing
 

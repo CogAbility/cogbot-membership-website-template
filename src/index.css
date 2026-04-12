@@ -43,7 +43,13 @@
 
 @layer components {
   .animated-gradient-hero {
-    background: linear-gradient(270deg, #2fb8ee, #25a0d0, #23a5e7, #20afdf);
+    background: linear-gradient(
+      270deg,
+      hsl(var(--primary)),
+      hsl(var(--primary) / 0.85),
+      hsl(var(--primary) / 0.95),
+      hsl(var(--primary) / 0.8)
+    );
     background-size: 300% 300%;
     animation: gradient-shift 12s ease infinite;
   }

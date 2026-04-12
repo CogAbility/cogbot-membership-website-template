@@ -12,8 +12,8 @@
  *       "Replace the testimonials with..."
  *
  * Also update:
- *   - public/buddy-icon.webp    — chat avatar icon
- *   - public/bab-full-logo.webp — org logo shown in the hero
+ *   - public/bot-icon.svg       — chat avatar icon (replace with your own image)
+ *   - public/org-logo.svg       — org logo shown in the hero (replace with your own image)
  *   - public/favicon.svg        — browser tab icon
  *   - .env                      — service credentials (App ID, CMG, CogBot)
  */
@@ -27,10 +27,19 @@ export default {
   poweredByName: 'CogAbility',
   poweredByUrl: 'https://cogability.net',
 
-  // Image paths (relative to public/ in the client directory)
+  // Page metadata (SEO, social sharing, browser tab)
+  // These are injected into index.html at build time by the Vite plugin.
+  // If omitted, title and description are composed from botName + siteName + hero.subtitle.
+  meta: {
+    title: 'Buddy AI Parent Helper | Build a Brain',
+    description: 'An evidence-based AI parenting companion designed to help parents navigate the early years with confidence.',
+  },
+
+  // Image paths (relative to public/)
+  // Replace the placeholder files with your own images (any format: svg, webp, png).
   images: {
-    botIcon: '/buddy-icon.webp',       // Chat avatar and header icon
-    orgLogo: '/bab-full-logo.webp',    // "Presented by" logo in hero
+    botIcon: '/bot-icon.svg',          // Chat avatar and header icon
+    orgLogo: '/org-logo.svg',          // "Presented by" logo in hero
     favicon: '/favicon.svg',
   },
 

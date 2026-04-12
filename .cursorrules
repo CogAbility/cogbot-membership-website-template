@@ -27,8 +27,18 @@ User clicks Sign In
 
 ## Where to make changes
 
-### Change site content or branding
-Edit `site.config.js` at the project root. This is the ONLY file that differs between clients. It contains every user-visible string: site name, bot name, hero text, features, testimonials, about section, member page copy, footer text.
+### Change site content, branding, or SEO
+Edit `site.config.js` at the project root. This is the ONLY file that differs between clients. It contains every user-visible string: site name, bot name, page title, meta description, OG tags, hero text, features, testimonials, about section, member page copy, footer text.
+
+The `meta` section controls the page title, description, and social sharing tags:
+```js
+meta: {
+  title: 'Bot Name | Org Name',
+  description: 'Description for search engines and social sharing.',
+  ogImage: '/og-image.png',  // optional
+}
+```
+If `meta` is omitted, title defaults to `botName | siteName` and description defaults to `hero.subtitle`.
 
 ### Change colors or fonts
 Edit the CSS custom properties in `src/index.css` under `:root`. Colors use HSL values:
@@ -39,12 +49,13 @@ Edit the CSS custom properties in `src/index.css` under `:root`. Colors use HSL 
   --accent: 45 95% 62%;       /* highlight color */
 }
 ```
+The hero gradient adapts automatically to the `--primary` color.
 
 ### Change logos or images
 Replace files in `public/`. Update the paths in `site.config.js` under `images:`:
-- `public/buddy-icon.webp`    — chat avatar and header icon
-- `public/bab-full-logo.webp` — "Presented by" logo in the hero
-- `public/favicon.svg`        — browser tab icon
+- `public/bot-icon.svg`     — chat avatar and header icon
+- `public/org-logo.svg`     — "Presented by" logo in the hero
+- `public/favicon.svg`      — browser tab icon
 
 ### Change auth credentials
 Edit `.env`. Never hardcode credentials in source files.
@@ -72,9 +83,10 @@ Edit `.env`. Never hardcode credentials in source files.
 
 | File | Purpose |
 |---|---|
-| `site.config.js` | All branding and content — start here for any text or content change |
+| `site.config.js` | All branding, content, and SEO — start here for any text or content change |
 | `.env` | Service credentials — copy from `.env.example` and fill in values |
-| `public/` | Logo and icon images |
+| `index.html` | **Auto-generated** from `site.config.js` via Vite plugin — do NOT edit directly |
+| `public/` | Logo and icon images (replace placeholders with your own) |
 | `src/index.css` | Design tokens (colors, fonts) — edit to change the theme |
 | `src/App.jsx` | Route definitions — add new pages here |
 | `src/components/` | Shared UI components — read from site.config.js |
@@ -82,7 +94,7 @@ Edit `.env`. Never hardcode credentials in source files.
 | `src/auth/` | Auth modules — do not modify unless changing auth providers |
 | `src/services/buddyApi.js` | CogBot API client — do not modify unless changing chat provider |
 | `src/hooks/useBuddyChat.js` | Chat state management |
-| `vite.config.js` | Build config and dev proxy |
+| `vite.config.js` | Build config, dev proxy, and site meta injection plugin |
 
 ---
 
@@ -104,6 +116,7 @@ Edit `.env`. Never hardcode credentials in source files.
 - Set all `VITE_*` variables from `.env.example` in your platform's build settings
 - Build command: `npm run build`
 - Output directory: `dist`
+- After deploying, send your production URL to CogAbility for CORS configuration
 
 **Running locally:**
 ```bash
@@ -118,8 +131,12 @@ npm run dev
 ## Common tasks (for AI assistants)
 
 - "Change the hero headline" → edit `hero.tagline` in `site.config.js`
+- "Change the page title" → edit `meta.title` in `site.config.js`
+- "Change the meta description" → edit `meta.description` in `site.config.js`
 - "Add a testimonial" → add an item to `testimonials.items` in `site.config.js`
 - "Change the primary color" → edit `--primary` in `src/index.css`
 - "Add a new page" → create in `src/pages/`, register in `src/App.jsx`
 - "Change the CogBot" → update `VITE_COGBOT_ID` in `.env`
 - "Change the sign-in button label" → edit `header.signInLabel` in `site.config.js`
+- "Change the bot icon" → replace `public/bot-icon.svg`, update `images.botIcon` in `site.config.js`
+- "Change the org logo" → replace `public/org-logo.svg`, update `images.orgLogo` in `site.config.js`

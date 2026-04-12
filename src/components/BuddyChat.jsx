@@ -1,5 +1,6 @@
 import { useState, useRef, useEffect } from 'react';
 import useBuddyChat from '../hooks/useBuddyChat';
+import config from '@/site.config';
 
 function prepareHtml(html) {
   return html.replace(/<a\s/gi, '<a target="_blank" rel="noopener noreferrer" ');
@@ -122,7 +123,7 @@ function MessageBubble({ message }) {
 function BuddyAvatar() {
   return (
     <img
-      src="/buddy-icon.webp"
+      src={config.images.botIcon}
       alt=""
       className="w-7 h-7 rounded-full object-cover flex-shrink-0 shadow-sm"
     />
