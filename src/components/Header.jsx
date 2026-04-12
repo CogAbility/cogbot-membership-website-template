@@ -6,7 +6,7 @@ import config from '@/site.config'
 const { header, images } = config
 
 export default function Header() {
-  const { user, isAuthenticated, isMember, isLoading, login, logout } = useAuth()
+  const { user, isAuthenticated, isMember, isLoading, geofenced, login, logout } = useAuth()
   const navigate = useNavigate()
   const [dropdownOpen, setDropdownOpen] = useState(false)
   const dropdownRef = useRef(null)
@@ -46,7 +46,7 @@ export default function Header() {
 
         {/* Right group: CTA button + user icon */}
         <div className="flex items-center gap-2">
-          {!isAuthenticated && !isLoading && (
+          {!isAuthenticated && !isLoading && !geofenced && (
             <button
               onClick={handleLogin}
               className="flex items-center gap-1.5 bg-white text-primary font-bold text-xs sm:text-sm px-2.5 sm:px-3 py-1.5 rounded-full shadow-md hover:shadow-lg hover:scale-105 transition-all duration-200 whitespace-nowrap"
