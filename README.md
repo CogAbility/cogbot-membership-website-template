@@ -9,8 +9,8 @@ Browser (React SPA)
   │
   ├─ On page load — anonymous geofence probe
   │     └─ GET /auth/geofence/check → CMG
-  │           ├─ geofenced: false → public chat widget enabled
-  │           └─ geofenced: true  → chat widget hidden, message shown
+  │           ├─ Allowed → public chat widget shown
+  │           └─ Blocked → "Not Available in Your Area" message shown
   │
   ├─ Public landing page (/) — anonymous chat (if not geofenced)
   │     └─ BuddyChat widget — no login required
@@ -19,27 +19,31 @@ Browser (React SPA)
   │
   └─ User clicks Sign In
         └─ App ID popup (OIDC) → idToken
-              └─ POST /auth/validate → CMG (CogBot Membership Gateway)
+              └─ POST /auth/validate → CMG
                     │
                     ├─ 1. Verify JWT (App ID JWKS)
-                    ├─ 2. Geofence check for members (if configured)
+                    │
+                    ├─ 2. Member geofence (if enabled)
+                    │     └─ Blocked → geofence message shown (even existing members)
+                    │
                     └─ 3. Cloudant whitelist lookup
-                            │
-                            ├─ isMember: true, autoProvisioned: true
-                            │     └─ /onboarding wizard (new members)
-                            │           └─ Collects name + child info
-                            │                └─ Authenticated message → CogBot server → be-pfc
-                            │                     └─ save_memory → Pinecone (Mem0)
-                            │                          └─ get_memory injects profile into
-                            │                               system prompt on every chat
-                            │
-                            ├─ isMember: true, returning member
-                            │     └─ /members page + authenticated CogBot chat
-                            │           └─ Long-term memory enabled (Pinecone)
-                            │
-                            ├─ isMember: false, geofenced: true → geofence message shown
-                            │
-                            └─ isMember: false → Access Denied
+                          │
+                          ├─ Not in whitelist, auto-provisioning enabled
+                          │     ├─ New-signup geofence check (if enabled)
+                          │     │     └─ Blocked → geofence message shown
+                          │     └─ Allowed → auto-create member
+                          │           └─ /onboarding wizard (new members)
+                          │                 └─ Collects name + child info
+                          │                      └─ Authenticated message → CogBot → be-pfc
+                          │                           └─ save_memory → Pinecone (Mem0)
+                          │                                └─ get_memory injects profile into
+                          │                                     system prompt on every chat
+                          │
+                          ├─ In whitelist, active, has namespace roles
+                          │     └─ /members page + authenticated CogBot chat
+                          │           └─ Long-term memory enabled (Pinecone)
+                          │
+                          └─ Not a member → Access Denied
 ```
 
 The UI is a **static SPA** with zero backend code. All membership logic lives in CMG. Long-term memory is managed by **be-pfc** (Prefrontal Cortex backend) using Mem0 and Pinecone.
@@ -429,8 +433,14 @@ For production (platform hosting), the CogBot server must allow your deployed do
 
 ### Geofencing
 
-CMG can restrict access by geographic location. When a user is geofenced, CMG returns:
+CMG can restrict access by geographic location using two independently configurable flags:
+
+- **`enabled_for_anonymous_users`** — gates the public chat widget on the landing page and blocks new auto-provisioned signups from outside the allowed region.
+- **`enabled_for_members`** — blocks existing members from accessing the members area when logging in from outside the allowed region.
+
+When a user is geofenced, CMG returns:
 ```json
 { "isMember": false, "geofenced": true, "geofenceMessage": "..." }
 ```
-`RoleGate` displays the `geofenceMessage` automatically — no UI code changes needed. Once a user has joined as a member within the allowed region, geofencing no longer applies to them on future logins.
+
+On the public landing page, the Hero component shows a "Not Available in Your Area" notice instead of the chat widget. On the members page, `RoleGate` displays the geofence message automatically. No UI code changes are needed — geofencing is configured entirely in the Cloudant cogbot documents for your namespace.
