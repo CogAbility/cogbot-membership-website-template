@@ -7,7 +7,7 @@ A membership-gated website template powered by CogBot chat and IBM App ID authen
 ```
 Browser (React SPA)
   │
-  ├─ App ID popup login ──► IBM App ID ──► idToken
+  ├─ App ID login ──► IBM App ID ──► idToken
   │
   └─ POST /auth/validate ──► CMG (CogBot Membership Gateway)
                                │
@@ -15,11 +15,21 @@ Browser (React SPA)
                                ├─ 2. Geofence check (if configured)
                                └─ 3. Cloudant whitelist lookup
                                        │
-                                       ├─ isMember: true  → /members page + CogBot chat
+                                       ├─ isMember: true, autoProvisioned: true
+                                       │     └─ /onboarding wizard (new members)
+                                       │           └─ Collects name + baby/child info
+                                       │                └─ Authenticated message → CogBot server → be-pfc
+                                       │                     └─ save_memory tool → Pinecone (Mem0)
+                                       │                          └─ get_memory injects profile into
+                                       │                               system prompt on every chat
+                                       │
+                                       ├─ isMember: true, returning member
+                                       │     └─ localStorage onboarded_{uid} flag → /members + CogBot chat
+                                       │
                                        └─ isMember: false → Access Denied
 ```
 
-The UI is a **static SPA** with zero backend code. All membership logic lives in CMG.
+The UI is a **static SPA** with zero backend code. All membership logic lives in CMG. Long-term memory is managed by **be-pfc** (Prefrontal Cortex backend) using Mem0 and Pinecone.
 
 ---
 
@@ -87,6 +97,8 @@ Edit `site.config.js`. Every user-visible string lives here:
 | `testimonials` | Section heading and testimonial cards |
 | `about` | Section heading, paragraphs, checklist, CTAs |
 | `members` | Member page headings, quick tips, bot description |
+| `onboarding` | Wizard headings, step labels, gender/month options, skip label |
+| `profile` | Profile page headings, save label, change password label |
 | `footer` | Brand name, nav links, copyright, powered-by |
 
 ### Colors and theme
@@ -106,6 +118,38 @@ All colors use HSL format. You can ask an AI tool: "Change the primary color to 
 ### Images
 
 Replace files in `public/`. Then update the `images:` section in `site.config.js` if you use different filenames.
+
+---
+
+## Member Onboarding
+
+When a new member signs in for the first time, CMG returns `autoProvisioned: true`. The app redirects them to a three-step onboarding wizard (`/onboarding`) instead of the members page:
+
+1. **Your Info** — first name (pre-filled from App ID profile), last name (optional)
+2. **Baby Info** — child's name, gender, birthday; supports multiple children via "Add another child"
+3. **All Set** — summary confirmation, then navigates to `/members`
+
+On completion the wizard fires an authenticated message to the CogBot server with the collected profile. The be-pfc agent's `save_memory` tool saves it to Pinecone. On every subsequent chat, `get_memory` retrieves the profile and injects it into the system prompt so Buddy can give personalized responses.
+
+A `localStorage` flag (`onboarded_{uid}`) is set when onboarding is completed or skipped. The members page checks this flag on mount and redirects to `/onboarding` if it is absent, ensuring that users who were removed and re-admitted also go through onboarding.
+
+### Profile management
+
+Members can update their name and child info at any time via the **Edit Profile** option in the user account dropdown (top-right of every page). Saving sends a new authenticated message to be-pfc, which overwrites the existing Pinecone memory entry.
+
+Password management via the profile page is supported for Cloud Directory (email/password) users only. Google and other social login users manage their credentials through their identity provider.
+
+---
+
+## Long-Term Memory (Pinecone)
+
+User profile data is persisted in Pinecone via **be-pfc** (the Prefrontal Cortex AI backend) using [Mem0](https://mem0.ai):
+
+- **During onboarding / profile save** — the browser sends an authenticated chat message containing the user's name and child info. The be-pfc agent calls `save_memory`, which stores the profile as a JSON document in Pinecone indexed by user ID with scope `user_profile`.
+- **During every chat** — `get_memory` retrieves the stored profile and prepends it to the system prompt as a `<memory>` block. Buddy uses this to personalize all responses.
+- **During chat conversations** — the agent also calls `save_memory` whenever the user discloses additional personal information (preferences, locations, family details, etc.), keeping the profile up to date automatically.
+
+`save_memory` only runs for authenticated (non-anonymous) users. Anonymous public chat sessions do not persist memory.
 
 ---
 
@@ -149,7 +193,7 @@ cp .env.example .env
 npm run dev
 ```
 
-The dev server starts at `http://localhost:5173`. During development, `/cogbot-api` requests are proxied to `VITE_COGBOT_HOST`, so no CORS configuration is needed locally.
+The dev server starts at `http://localhost:5174`. During development, `/cogbot-api` requests are proxied to `VITE_COGBOT_HOST`, so no CORS configuration is needed locally.
 
 ---
 
@@ -195,18 +239,22 @@ cogbot-membership-website-template/
       Features.jsx
       Testimonials.jsx
       About.jsx
-      BuddyChat.jsx        Chat UI component
-      CogBotEmbed.jsx      Wrapper for BuddyChat
+      BuddyChat.jsx                  Chat UI component
+      CogBotEmbed.jsx                Wrapper for BuddyChat
+      OnboardingProgressIndicator.jsx  Step progress indicator
+      ProfileFormFields.jsx            Shared form fields (name, child info)
     pages/
       LandingPage.jsx      Public page
       MembersPage.jsx      Member-only page with CogBot
+      OnboardingPage.jsx   New member 3-step onboarding wizard
+      ProfilePage.jsx      Member profile management
       LoginPage.jsx        Shown when unauthenticated
       AccessDenied.jsx     Shown when not authorized
       CallbackPage.jsx     OIDC callback handler
     hooks/
       useBuddyChat.js      Chat session state
     services/
-      buddyApi.js          CogBot HTTP API client
+      buddyApi.js          CogBot HTTP API client (anonymous + authenticated)
     App.jsx                Routes
     main.jsx               Entry point
     index.css              Design tokens and global styles
@@ -232,11 +280,12 @@ This is a pure static SPA. All server-side logic lives in external services:
 
 | Layer | Responsibility |
 |---|---|
-| **This UI** | Login UX, page layout, route gating |
-| **App ID** | Authentication — issues JWTs |
-| **CMG** | Membership validation — verifies JWTs, checks Cloudant, returns roles |
+| **This UI** | Login UX, onboarding wizard, profile management, page layout, route gating |
+| **App ID** | Authentication — issues JWTs, supports email/password and social login (Google, etc.) |
+| **CMG** | Membership validation — verifies JWTs, checks Cloudant, returns roles and `autoProvisioned` flag |
 | **Cloudant** | Source of truth for whitelist entries and role definitions |
-| **CogBot server** | AI chat responses |
+| **CogBot server** | Widget BFF — session management, routes messages to be-pfc |
+| **be-pfc** | AI cascade (LangGraph), long-term memory via Mem0 + Pinecone |
 
 ### CORS
 
@@ -250,4 +299,4 @@ CMG can restrict access by geographic location. When a user is geofenced, CMG re
 ```json
 { "isMember": false, "geofenced": true, "geofenceMessage": "..." }
 ```
-`RoleGate` displays the `geofenceMessage` automatically — no UI code changes needed.
+`RoleGate` displays the `geofenceMessage` automatically — no UI code changes needed. Once a user has joined as a member within the allowed region, geofencing no longer applies to them on future logins.

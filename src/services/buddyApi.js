@@ -122,6 +122,107 @@ export async function sendMessage(text) {
 }
 
 /**
+ * Establish an authenticated session with the widget BFF using the user's
+ * real idToken. Must be called before sendAuthenticatedMessage.
+ * Returns { uid, cogbot_sid? }.
+ */
+export async function setAuthenticatedTokens(idToken) {
+  const base = getBaseUrl();
+  let url = `${base}/api/settokens`;
+  url = appendSidParam(url);
+  url = cacheBust(url);
+
+  const res = await fetch(url, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', Accept: 'application/json' },
+    body: JSON.stringify({ tokens: { idToken } }),
+    credentials: 'include',
+  });
+
+  if (!res.ok) throw new Error(`settokens failed: ${res.status}`);
+  const data = await res.json();
+
+  if (data.uid) sessionStorage.setItem('buddy_user_id', data.uid);
+  if (data.cogbot_sid) setCogbotSid(data.cogbot_sid);
+
+  return data;
+}
+
+/**
+ * Send a message as an authenticated member. Used during onboarding to
+ * persist user/baby profile to Pinecone via the agent's save_memory tool.
+ * Calls settokens first to establish an authenticated widget BFF session.
+ */
+export async function sendAuthenticatedMessage(text, { idToken }) {
+  await setAuthenticatedTokens(idToken);
+
+  const base = getBaseUrl();
+  const uid = getUserId();
+
+  let url = `${base}/api/cogbots/${COGBOT_ID}/id/${uid}/message`;
+  url = appendSidParam(url);
+  url = cacheBust(url);
+
+  const body = {
+    input: [{ type: 'text', text }],
+    context: { global: { system: { user_id: uid } } },
+    metadata: {},
+    user_id: uid,
+    language: LANGUAGE,
+    country: COUNTRY,
+    host_url: window.location.href,
+    training: false,
+    channel: 'web',
+    anonymous: false,
+  };
+
+  const res = await fetch(url, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      Accept: 'application/json',
+    },
+    body: JSON.stringify(body),
+    credentials: 'include',
+  });
+
+  if (!res.ok) throw new Error(`authenticated message failed: ${res.status}`);
+  return res.json();
+}
+
+/**
+ * Compose a natural-language onboarding message from collected profile data.
+ * The be-pfc agent's save_memory tool will parse this and store it in Pinecone.
+ *
+ * @param {{ firstName: string, lastName: string }} parentInfo
+ * @param {Array<{ name: string, gender: string, birthMonth: string, birthDay: string, birthYear: string }>} children
+ */
+export function buildOnboardingMessage(parentInfo, children) {
+  const nameParts = [parentInfo.firstName, parentInfo.lastName].filter(Boolean);
+  const fullName = nameParts.join(' ');
+
+  const childDescriptions = children.map((child) => {
+    const parts = [`a child named ${child.name}`];
+    if (child.gender) parts.push(`(${child.gender})`);
+    const hasBirthday = child.birthMonth && child.birthDay && child.birthYear;
+    if (hasBirthday) {
+      parts.push(`born ${child.birthMonth} ${child.birthDay} ${child.birthYear}`);
+    }
+    return parts.join(' ');
+  });
+
+  const lines = [];
+  if (fullName) lines.push(`My name is ${fullName}.`);
+  if (childDescriptions.length === 1) {
+    lines.push(`I have ${childDescriptions[0]}.`);
+  } else if (childDescriptions.length > 1) {
+    lines.push(`I have ${childDescriptions.length} children: ${childDescriptions.join(', ')}.`);
+  }
+  lines.push('Please save this to my profile.');
+  return lines.join(' ');
+}
+
+/**
  * Extract displayable text from a CCA2/Watson-style response.
  * Returns an array of { type, text, ... } items.
  */

@@ -11,10 +11,11 @@ export default function CallbackPage() {
     if (calledRef.current) return;
     calledRef.current = true;
 
-    handleCallback().then((success) => {
+    handleCallback().then((result) => {
+      if (!result.success) return setRedirectTo('/');
       const returnTo = sessionStorage.getItem('auth_return_to') || '/members';
       sessionStorage.removeItem('auth_return_to');
-      setRedirectTo(success ? returnTo : '/');
+      setRedirectTo(result.autoProvisioned ? '/onboarding' : returnTo);
     });
   }, [handleCallback]);
 

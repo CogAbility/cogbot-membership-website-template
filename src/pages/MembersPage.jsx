@@ -1,3 +1,5 @@
+import { useEffect } from 'react'
+import { useNavigate } from 'react-router-dom'
 import { useAuth } from '../auth/AuthProvider'
 import CogBotEmbed from '../components/CogBotEmbed'
 import config from '@/site.config'
@@ -6,8 +8,15 @@ const { members } = config
 
 export default function MembersPage() {
   const { user, logout } = useAuth()
+  const navigate = useNavigate()
 
   const firstName = user?.firstName || user?.email?.split('@')[0] || 'Member'
+
+  useEffect(() => {
+    if (user?.uid && !localStorage.getItem(`onboarded_${user.uid}`)) {
+      navigate('/onboarding', { replace: true });
+    }
+  }, [user?.uid, navigate])
 
   return (
     <main className="min-h-[calc(100vh-64px)] bg-background">

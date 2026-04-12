@@ -74,6 +74,7 @@ export function AuthProvider({ children }) {
       setGeofenced(data.geofenced === true);
       setGeofenceMessage(data.geofenceMessage || null);
       setMembershipStatus(data.isMember ? 'member' : 'not_member');
+      return data.autoProvisioned === true;
     } catch (err) {
       console.error('AuthProvider: membership validation error', err);
       setIsMember(false);
@@ -82,6 +83,7 @@ export function AuthProvider({ children }) {
       setGeofenced(false);
       setGeofenceMessage(null);
       setMembershipStatus('error');
+      return false;
     }
   }, []);
 
@@ -112,12 +114,12 @@ export function AuthProvider({ children }) {
         raw: p,
       });
 
-      await validateMembership(oidcUser.id_token);
-      return true;
+      const wasAutoProvisioned = await validateMembership(oidcUser.id_token);
+      return { success: true, autoProvisioned: wasAutoProvisioned };
     } catch (err) {
       console.error('AuthProvider: callback error', err);
       setError(err?.message || 'Login failed. Please try again.');
-      return false;
+      return { success: false, autoProvisioned: false };
     } finally {
       setIsLoading(false);
     }

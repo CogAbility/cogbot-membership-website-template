@@ -7,6 +7,8 @@ import Footer from './components/Footer';
 import LandingPage from './pages/LandingPage';
 import MembersPage from './pages/MembersPage';
 import CallbackPage from './pages/CallbackPage';
+import OnboardingPage from './pages/OnboardingPage';
+import ProfilePage from './pages/ProfilePage';
 
 export default function App() {
   return (
@@ -28,6 +30,24 @@ export default function App() {
                 }
               />
               <Route path="/callback" element={<CallbackPage />} />
+              <Route
+                path="/onboarding"
+                element={
+                  <ProtectedRoute>
+                    <OnboardingPage />
+                  </ProtectedRoute>
+                }
+              />
+              <Route
+                path="/profile"
+                element={
+                  <ProtectedRoute>
+                    <RoleGate requiredRole="member">
+                      <ProfilePage />
+                    </RoleGate>
+                  </ProtectedRoute>
+                }
+              />
               <Route path="*" element={<LandingPage />} />
             </Routes>
           </div>
