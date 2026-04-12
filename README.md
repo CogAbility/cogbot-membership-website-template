@@ -1,6 +1,6 @@
 # cogbot-membership-website-template
 
-A membership-gated website template powered by CogBot chat and IBM App ID authentication. Fork this template to create a branded membership site for your organization — customize it by editing one config file.
+A membership-gated website template powered by CogBot chat and IBM App ID authentication. Use this template to create a branded membership site for your organization — customize it by editing one config file.
 
 ## How It Works
 
