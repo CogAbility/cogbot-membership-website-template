@@ -7,26 +7,32 @@ A membership-gated website template powered by CogBot chat and IBM App ID authen
 ```
 Browser (React SPA)
   │
-  ├─ App ID login ──► IBM App ID ──► idToken
+  ├─ Public landing page (/)
+  │     └─ BuddyChat widget — no login required
+  │           └─ Anonymous session → CogBot server
+  │                 └─ Chat works immediately (no memory persistence)
   │
-  └─ POST /auth/validate ──► CMG (CogBot Membership Gateway)
-                               │
-                               ├─ 1. Verify JWT (App ID JWKS)
-                               ├─ 2. Geofence check (if configured)
-                               └─ 3. Cloudant whitelist lookup
-                                       │
-                                       ├─ isMember: true, autoProvisioned: true
-                                       │     └─ /onboarding wizard (new members)
-                                       │           └─ Collects name + baby/child info
-                                       │                └─ Authenticated message → CogBot server → be-pfc
-                                       │                     └─ save_memory tool → Pinecone (Mem0)
-                                       │                          └─ get_memory injects profile into
-                                       │                               system prompt on every chat
-                                       │
-                                       ├─ isMember: true, returning member
-                                       │     └─ localStorage onboarded_{uid} flag → /members + CogBot chat
-                                       │
-                                       └─ isMember: false → Access Denied
+  └─ User clicks Sign In
+        └─ App ID popup (OIDC) → idToken
+              └─ POST /auth/validate → CMG (CogBot Membership Gateway)
+                    │
+                    ├─ 1. Verify JWT (App ID JWKS)
+                    ├─ 2. Geofence check (if configured)
+                    └─ 3. Cloudant whitelist lookup
+                            │
+                            ├─ isMember: true, autoProvisioned: true
+                            │     └─ /onboarding wizard (new members)
+                            │           └─ Collects name + child info
+                            │                └─ Authenticated message → CogBot server → be-pfc
+                            │                     └─ save_memory → Pinecone (Mem0)
+                            │                          └─ get_memory injects profile into
+                            │                               system prompt on every chat
+                            │
+                            ├─ isMember: true, returning member
+                            │     └─ /members page + authenticated CogBot chat
+                            │           └─ Long-term memory enabled (Pinecone)
+                            │
+                            └─ isMember: false → Access Denied
 ```
 
 The UI is a **static SPA** with zero backend code. All membership logic lives in CMG. Long-term memory is managed by **be-pfc** (Prefrontal Cortex backend) using Mem0 and Pinecone.
