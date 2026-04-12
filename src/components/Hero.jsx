@@ -1,9 +1,12 @@
 import BuddyChat from './BuddyChat'
+import { useAuth } from '../auth/AuthProvider'
 import config from '@/site.config'
 
 const { hero, images } = config
 
 export default function Hero({ isMember }) {
+  const { geofenced, geofenceMessage, geofenceChecking } = useAuth()
+
   return (
     <section className="animated-gradient-hero min-h-screen flex flex-col pt-12 sm:pt-14 pb-10 sm:pb-12 px-4">
       <div className="max-w-4xl mx-auto w-full flex flex-col items-center gap-3 sm:gap-4 flex-1">
@@ -57,22 +60,45 @@ export default function Hero({ isMember }) {
         )}
 
         {/* 3. Chat label */}
-        <div className="flex items-center gap-2 text-white">
-          <svg className="w-5 h-5 sm:w-6 sm:h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z" />
-          </svg>
-          <span className="text-base sm:text-lg font-bold">{hero.chatLabel}</span>
-        </div>
-
-        {/* 4. Chat widget */}
-        <div className="w-full rounded-xl sm:rounded-2xl overflow-hidden shadow-lg border border-border bg-white h-[60vh] flex flex-col">
-          <div className="flex items-center gap-2.5 px-4 py-2.5 bg-[#1e3a5f] flex-shrink-0">
-            <img src={images.botIcon} alt="" className="w-8 h-8 rounded-full object-cover" />
-            <span className="text-white font-bold text-sm">{config.botName}</span>
-            <span className="w-2.5 h-2.5 rounded-full bg-green-400" />
+        {!geofenced && (
+          <div className="flex items-center gap-2 text-white">
+            <svg className="w-5 h-5 sm:w-6 sm:h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z" />
+            </svg>
+            <span className="text-base sm:text-lg font-bold">{hero.chatLabel}</span>
           </div>
-          <BuddyChat className="flex-1 min-h-0 rounded-none shadow-none border-0" />
-        </div>
+        )}
+
+        {/* 4. Chat widget — replaced by geofence notice when access is restricted */}
+        {geofenceChecking ? (
+          <div className="w-full rounded-xl sm:rounded-2xl overflow-hidden shadow-lg border border-border bg-white h-[60vh] flex items-center justify-center">
+            <span className="text-muted-foreground text-sm animate-pulse">Loading...</span>
+          </div>
+        ) : geofenced ? (
+          <div className="w-full rounded-xl sm:rounded-2xl overflow-hidden shadow-lg border border-border bg-white h-[60vh] flex flex-col items-center justify-center gap-4 px-8 text-center">
+            <div className="w-14 h-14 rounded-full bg-destructive/10 flex items-center justify-center">
+              <svg className="w-7 h-7 text-destructive" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" />
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 11a3 3 0 11-6 0 3 3 0 016 0z" />
+              </svg>
+            </div>
+            <div>
+              <h2 className="text-lg font-black text-foreground mb-2">Not Available in Your Area</h2>
+              <p className="text-muted-foreground text-sm leading-relaxed max-w-sm">
+                {geofenceMessage || 'This service is not available in your area.'}
+              </p>
+            </div>
+          </div>
+        ) : (
+          <div className="w-full rounded-xl sm:rounded-2xl overflow-hidden shadow-lg border border-border bg-white h-[60vh] flex flex-col">
+            <div className="flex items-center gap-2.5 px-4 py-2.5 bg-[#1e3a5f] flex-shrink-0">
+              <img src={images.botIcon} alt="" className="w-8 h-8 rounded-full object-cover" />
+              <span className="text-white font-bold text-sm">{config.botName}</span>
+              <span className="w-2.5 h-2.5 rounded-full bg-green-400" />
+            </div>
+            <BuddyChat className="flex-1 min-h-0 rounded-none shadow-none border-0" />
+          </div>
+        )}
 
         {/* 5. Tagline + stats */}
         <div className="w-full flex flex-col items-center gap-4 pt-2 pb-4 text-center">

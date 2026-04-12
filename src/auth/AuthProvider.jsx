@@ -1,19 +1,22 @@
-import { createContext, useContext, useState, useCallback } from 'react';
+import { createContext, useContext, useState, useCallback, useEffect } from 'react';
 import { getUserManager } from './userManager';
 
 /**
  * AuthContext provides:
- *   user             - App ID user info (null when not logged in)
- *   isAuthenticated  - boolean
- *   isMember         - boolean, true only when CMG confirmed namespace membership
- *   roles            - array of { namespace, name, display_name }
- *   autoProvisioned  - boolean, true when CMG auto-created the membership on this login
- *   membershipStatus - "none" | "checking" | "member" | "not_member" | "error"
- *   isLoading        - boolean (true during login/logout)
- *   error            - string | null
- *   login(returnTo)  - redirects to App ID for authentication
- *   handleCallback() - processes the redirect callback, returns true on success
- *   logout()         - clears session
+ *   user                  - App ID user info (null when not logged in)
+ *   isAuthenticated       - boolean
+ *   isMember              - boolean, true only when CMG confirmed namespace membership
+ *   roles                 - array of { namespace, name, display_name }
+ *   autoProvisioned       - boolean, true when CMG auto-created the membership on this login
+ *   membershipStatus      - "none" | "checking" | "member" | "not_member" | "error"
+ *   geofenced             - boolean, true when CMG says this IP is outside the allowed region
+ *   geofenceMessage       - string | null
+ *   geofenceChecking      - boolean, true while the initial anonymous geofence probe is in-flight
+ *   isLoading             - boolean (true during login/logout)
+ *   error                 - string | null
+ *   login(returnTo)       - redirects to App ID for authentication
+ *   handleCallback()      - processes the redirect callback, returns true on success
+ *   logout()              - clears session
  */
 const AuthContext = createContext(null);
 
@@ -27,9 +30,33 @@ export function AuthProvider({ children }) {
   const [roles, setRoles] = useState([]);
   const [geofenced, setGeofenced] = useState(false);
   const [geofenceMessage, setGeofenceMessage] = useState(null);
+  const [geofenceChecking, setGeofenceChecking] = useState(true);
   const [membershipStatus, setMembershipStatus] = useState('none');
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState(null);
+
+  // Anonymous geofence probe — runs once on mount before any login flow.
+  // Lets the landing page gate the public chat widget for non-allowed regions.
+  useEffect(() => {
+    async function checkAnonymousGeofence() {
+      try {
+        const res = await fetch(
+          `${CMG_URL}/auth/geofence/check?namespace=${encodeURIComponent(SITE_NAMESPACE)}`
+        );
+        if (!res.ok) return;
+        const data = await res.json();
+        if (data.geofenced) {
+          setGeofenced(true);
+          setGeofenceMessage(data.message || null);
+        }
+      } catch {
+        // Non-fatal — if the check fails, allow access (fail open)
+      } finally {
+        setGeofenceChecking(false);
+      }
+    }
+    checkAnonymousGeofence();
+  }, []);
 
   const validateMembership = useCallback(async (idToken) => {
     setMembershipStatus('checking');
@@ -119,6 +146,7 @@ export function AuthProvider({ children }) {
       roles,
       geofenced,
       geofenceMessage,
+      geofenceChecking,
       membershipStatus,
       isLoading,
       error,
