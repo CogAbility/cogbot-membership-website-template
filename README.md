@@ -7,7 +7,12 @@ A membership-gated website template powered by CogBot chat and IBM App ID authen
 ```
 Browser (React SPA)
   │
-  ├─ Public landing page (/)
+  ├─ On page load — anonymous geofence probe
+  │     └─ GET /auth/geofence/check → CMG
+  │           ├─ geofenced: false → public chat widget enabled
+  │           └─ geofenced: true  → chat widget hidden, message shown
+  │
+  ├─ Public landing page (/) — anonymous chat (if not geofenced)
   │     └─ BuddyChat widget — no login required
   │           └─ Anonymous session → CogBot server
   │                 └─ Chat works immediately (no memory persistence)
@@ -17,7 +22,7 @@ Browser (React SPA)
               └─ POST /auth/validate → CMG (CogBot Membership Gateway)
                     │
                     ├─ 1. Verify JWT (App ID JWKS)
-                    ├─ 2. Geofence check (if configured)
+                    ├─ 2. Geofence check for members (if configured)
                     └─ 3. Cloudant whitelist lookup
                             │
                             ├─ isMember: true, autoProvisioned: true
@@ -31,6 +36,8 @@ Browser (React SPA)
                             ├─ isMember: true, returning member
                             │     └─ /members page + authenticated CogBot chat
                             │           └─ Long-term memory enabled (Pinecone)
+                            │
+                            ├─ isMember: false, geofenced: true → geofence message shown
                             │
                             └─ isMember: false → Access Denied
 ```
