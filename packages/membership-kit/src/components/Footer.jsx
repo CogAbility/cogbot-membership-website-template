@@ -1,18 +1,16 @@
 import { Link } from 'react-router-dom'
-import config from '@/site.config'
-
-const { footer } = config
+import { useSiteConfig } from '../config/SiteConfigContext'
 
 export default function Footer() {
+  const { footer, images } = useSiteConfig()
+
   return (
     <footer className="bg-foreground py-6 sm:py-8 px-3 sm:px-4 md:px-8 -mt-px">
       <div className="max-w-4xl mx-auto">
         <div className="flex flex-col sm:flex-row items-center justify-between gap-4 pb-5 sm:pb-6 border-b border-primary-foreground/20">
           {/* Brand */}
           <div className="flex items-center gap-2">
-            <div className="w-7 h-7 rounded-full bg-primary-foreground/20 border border-primary-foreground/30 flex items-center justify-center">
-              <span className="text-white font-black text-xs">{footer.brandName[0]}</span>
-            </div>
+            <img src={images.botIcon} alt={footer.brandName} className="h-8 w-auto object-contain" />
             <div>
               <span className="block font-black text-white text-sm">{footer.brandName}</span>
               <span className="block text-[10px] text-primary-foreground/50 leading-none">{footer.brandSubtitle}</span>

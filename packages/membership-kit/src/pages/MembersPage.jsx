@@ -1,12 +1,11 @@
 import { useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useAuth } from '../auth/AuthProvider'
+import { useSiteConfig } from '../config/SiteConfigContext'
 import CogBotEmbed from '../components/CogBotEmbed'
-import config from '@/site.config'
-
-const { members } = config
 
 export default function MembersPage() {
+  const { members } = useSiteConfig()
   const { user, logout } = useAuth()
   const navigate = useNavigate()
 
@@ -20,12 +19,11 @@ export default function MembersPage() {
 
   return (
     <main className="min-h-[calc(100vh-64px)] bg-background">
-      {/* Top bar */}
       <div className="bg-card border-b border-border">
         <div className="max-w-4xl mx-auto px-3 sm:px-4 md:px-6 py-3 sm:py-4 flex items-center justify-between">
           <div>
             <h1 className="font-black text-foreground text-base sm:text-lg">
-              Hi, {firstName} 👋
+              {members.greetingTemplate.replace('{firstName}', firstName)}
             </h1>
             <p className="text-muted-foreground text-[10px] sm:text-xs mt-0.5">
               {user?.email} &bull; {members.memberBadge}
@@ -38,15 +36,13 @@ export default function MembersPage() {
             <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" />
             </svg>
-            Sign Out
+            {members.signOutLabel}
           </button>
         </div>
       </div>
 
-      {/* Main content */}
       <div className="max-w-4xl mx-auto px-3 sm:px-4 md:px-6 py-8 sm:py-10">
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 sm:gap-8">
-          {/* Chat — 2/3 width on large screens */}
           <div className="lg:col-span-2">
             <div className="mb-4">
               <h2 className="text-lg sm:text-xl font-black text-foreground">{members.chatHeading}</h2>
@@ -57,31 +53,27 @@ export default function MembersPage() {
             <CogBotEmbed height="640px" />
           </div>
 
-          {/* Sidebar */}
           <div className="space-y-4">
-            {/* Quick tips */}
             <div className="card">
               <h3 className="font-black text-foreground mb-3 text-sm">{members.quickTipsHeading}</h3>
               <ul className="space-y-2">
                 {members.quickTips.map((tip) => (
                   <li key={tip} className="flex items-start gap-2 text-[11px] sm:text-xs text-muted-foreground">
-                    <span className="text-primary mt-0.5 flex-shrink-0">→</span>
+                    <span className="text-primary mt-0.5 flex-shrink-0">{members.tipBullet}</span>
                     {tip}
                   </li>
                 ))}
               </ul>
             </div>
 
-            {/* Member info */}
             <div className="animated-gradient-hero rounded-2xl p-5 sm:p-6">
-              <div className="text-2xl mb-2">🧠</div>
+              <div className="text-2xl mb-2">{members.memberEmoji}</div>
               <h3 className="font-black text-white mb-1 text-sm">{members.memberBadge}</h3>
               <p className="text-primary-foreground/80 text-[11px] sm:text-xs leading-relaxed">
                 {members.memberDescription}
               </p>
             </div>
 
-            {/* About bot */}
             <div className="card">
               <h3 className="font-black text-foreground mb-2 text-sm">{members.aboutBotHeading}</h3>
               <p className="text-muted-foreground text-[11px] sm:text-xs leading-relaxed">

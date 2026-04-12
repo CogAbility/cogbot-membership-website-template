@@ -1,10 +1,11 @@
+import { Fragment } from 'react'
 import BuddyChat from './BuddyChat'
 import { useAuth } from '../auth/AuthProvider'
-import config from '@/site.config'
-
-const { hero, images } = config
+import { useSiteConfig } from '../config/SiteConfigContext'
 
 export default function Hero({ isMember }) {
+  const config = useSiteConfig()
+  const { hero, images } = config
   const { geofenced, geofenceMessage, geofenceChecking } = useAuth()
 
   return (
@@ -14,29 +15,25 @@ export default function Hero({ isMember }) {
         {/* 1. Branding card */}
         <div className="w-full rounded-xl sm:rounded-2xl overflow-hidden shadow-lg border border-border bg-white">
           <div className="flex items-center py-5 sm:py-7 md:py-8">
-            {/* Bot mascot */}
             <div className="flex-shrink-0 pl-6 sm:pl-10">
               <img
                 src={images.botIcon}
                 alt={config.botName}
-                className="w-auto h-[80px] sm:h-[100px] md:h-[120px] object-contain"
+                className="w-auto h-[110px] sm:h-[140px] md:h-[160px] object-contain"
               />
             </div>
 
-            {/* Bot name wordmark */}
             <div className="flex-1 flex items-center justify-center px-4 sm:px-6">
               <span className="text-primary font-black text-5xl sm:text-7xl md:text-8xl tracking-tight">
                 {config.botName}
               </span>
             </div>
 
-            {/* Divider */}
             <div className="w-px self-stretch bg-border mx-1" />
 
-            {/* Presented by + org logo */}
             <div className="flex-shrink-0 flex flex-col items-center justify-center px-6 sm:px-10 gap-1.5">
               <span className="text-muted-foreground font-bold text-[10px] sm:text-xs tracking-widest uppercase">
-                Presented by
+                {hero.presentedByLabel}
               </span>
               <img
                 src={images.orgLogo}
@@ -72,7 +69,7 @@ export default function Hero({ isMember }) {
         {/* 4. Chat widget — replaced by geofence notice when access is restricted */}
         {geofenceChecking ? (
           <div className="w-full rounded-xl sm:rounded-2xl overflow-hidden shadow-lg border border-border bg-white h-[60vh] flex items-center justify-center">
-            <span className="text-muted-foreground text-sm animate-pulse">Loading...</span>
+            <span className="text-muted-foreground text-sm animate-pulse">{hero.loadingLabel}</span>
           </div>
         ) : geofenced ? (
           <div className="w-full rounded-xl sm:rounded-2xl overflow-hidden shadow-lg border border-border bg-white h-[60vh] flex flex-col items-center justify-center gap-4 px-8 text-center">
@@ -83,19 +80,14 @@ export default function Hero({ isMember }) {
               </svg>
             </div>
             <div>
-              <h2 className="text-lg font-black text-foreground mb-2">Not Available in Your Area</h2>
+              <h2 className="text-lg font-black text-foreground mb-2">{hero.geofenceHeading}</h2>
               <p className="text-muted-foreground text-sm leading-relaxed max-w-sm">
-                {geofenceMessage || 'This service is not available in your area.'}
+                {geofenceMessage || hero.defaultGeofenceMessage}
               </p>
             </div>
           </div>
         ) : (
           <div className="w-full rounded-xl sm:rounded-2xl overflow-hidden shadow-lg border border-border bg-white h-[60vh] flex flex-col">
-            <div className="flex items-center gap-2.5 px-4 py-2.5 bg-[#1e3a5f] flex-shrink-0">
-              <img src={images.botIcon} alt="" className="w-8 h-8 rounded-full object-cover" />
-              <span className="text-white font-bold text-sm">{config.botName}</span>
-              <span className="w-2.5 h-2.5 rounded-full bg-green-400" />
-            </div>
             <BuddyChat className="flex-1 min-h-0 rounded-none shadow-none border-0" />
           </div>
         )}
@@ -112,13 +104,13 @@ export default function Hero({ isMember }) {
           </div>
           <div className="flex items-stretch gap-0">
             {hero.stats.map((stat, i) => (
-              <>
-                {i > 0 && <div key={`divider-${i}`} className="w-px bg-white/40 self-stretch" />}
-                <div key={stat.label} className="flex flex-col items-center px-8 sm:px-12">
+              <Fragment key={stat.label}>
+                {i > 0 && <div className="w-px bg-white/40 self-stretch" />}
+                <div className="flex flex-col items-center px-8 sm:px-12">
                   <span className="text-white font-black text-3xl sm:text-4xl">{stat.value}</span>
                   <span className="text-white/80 text-sm font-medium">{stat.label}</span>
                 </div>
-              </>
+              </Fragment>
             ))}
           </div>
         </div>

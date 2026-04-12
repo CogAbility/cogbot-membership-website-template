@@ -1,11 +1,9 @@
 import { useState } from 'react';
 import { Link } from 'react-router-dom';
 import { useAuth } from '../auth/AuthProvider';
-import { emptyChild, FormField, fieldClass, ChildForm } from '../components/ProfileFormFields';
+import { useSiteConfig } from '../config/SiteConfigContext';
 import { sendAuthenticatedMessage, buildOnboardingMessage } from '../services/buddyApi';
-import config from '@/site.config';
-
-const { profile: c, onboarding: oc } = config;
+import { emptyChild, FormField, fieldClass, ChildForm } from '../components/ProfileFormFields';
 
 const APPID_OAUTH_URL = import.meta.env.VITE_APPID_OAUTH_SERVER_URL || '';
 const APPID_CLIENT_ID = import.meta.env.VITE_APPID_CLIENT_ID || '';
@@ -20,6 +18,7 @@ function loadFromStorage(key, fallback) {
 }
 
 export default function ProfilePage() {
+  const { profile: c, onboarding: oc } = useSiteConfig();
   const { user } = useAuth();
 
   const [parentData, setParentData] = useState(() =>
@@ -39,9 +38,9 @@ export default function ProfilePage() {
 
   function validate() {
     const e = {};
-    if (!parentData.firstName.trim()) e.firstName = 'First name is required.';
+    if (!parentData.firstName.trim()) e.firstName = oc.firstNameRequired;
     childrenData.forEach((child, i) => {
-      if (!child.name.trim()) e[`name_${i}`] = 'Child name is required.';
+      if (!child.name.trim()) e[`name_${i}`] = oc.childNameRequired;
     });
     return e;
   }
@@ -67,13 +66,11 @@ export default function ProfilePage() {
     setIsSaving(true);
     setSavedMessage(null);
 
-    // Persist locally first so the values survive a page refresh
     if (user?.uid) {
       localStorage.setItem(`profile_parent_${user.uid}`, JSON.stringify(parentData));
       localStorage.setItem(`profile_children_${user.uid}`, JSON.stringify(childrenData));
     }
 
-    // Fire-and-forget the memory update — don't block the UI
     const message = buildOnboardingMessage(parentData, childrenData);
     sendAuthenticatedMessage(message, { idToken: user?.idToken }).catch((err) => {
       console.error('ProfilePage: failed to update profile', err);
@@ -96,12 +93,11 @@ export default function ProfilePage() {
     <div className="min-h-[80vh] bg-background px-4 pt-20 pb-10">
       <div className="max-w-lg mx-auto space-y-6">
 
-        {/* Header */}
         <div className="flex items-center gap-3">
           <Link
             to="/members"
             className="text-muted-foreground hover:text-foreground transition-colors"
-            aria-label="Back to chat"
+            aria-label={c.backAriaLabel}
           >
             <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
@@ -113,39 +109,36 @@ export default function ProfilePage() {
           </div>
         </div>
 
-        {/* Success message */}
         {savedMessage && (
           <div className="p-3 rounded-xl bg-primary/10 border border-primary/20 text-primary text-sm font-semibold">
             {savedMessage}
           </div>
         )}
 
-        {/* Your Info */}
         <div className="bg-card rounded-2xl border border-border p-6 space-y-4">
           <h2 className="font-black text-foreground text-sm">{c.yourInfoHeading}</h2>
 
-          <FormField label="First name" required error={errors.firstName}>
+          <FormField label={oc.firstNameLabel} required error={errors.firstName}>
             <input
               type="text"
               value={parentData.firstName}
               onChange={(e) => setParentData({ ...parentData, firstName: e.target.value })}
-              placeholder="Your first name"
+              placeholder={oc.firstNamePlaceholder}
               className={fieldClass(errors.firstName)}
             />
           </FormField>
 
-          <FormField label="Last name">
+          <FormField label={oc.lastNameLabel}>
             <input
               type="text"
               value={parentData.lastName}
               onChange={(e) => setParentData({ ...parentData, lastName: e.target.value })}
-              placeholder="Your last name (optional)"
+              placeholder={oc.lastNamePlaceholder}
               className={fieldClass()}
             />
           </FormField>
         </div>
 
-        {/* Children */}
         <div className="space-y-4">
           <h2 className="font-black text-foreground text-sm px-1">{c.childrenHeading}</h2>
 
@@ -170,7 +163,6 @@ export default function ProfilePage() {
           </button>
         </div>
 
-        {/* Save */}
         <button
           type="button"
           onClick={handleSave}
@@ -180,14 +172,13 @@ export default function ProfilePage() {
           {isSaving ? (
             <>
               <div className="w-4 h-4 border-2 border-primary-foreground border-t-transparent rounded-full animate-spin" />
-              Saving...
+              {c.savingLabel}
             </>
           ) : (
             c.saveLabel
           )}
         </button>
 
-        {/* Change Password */}
         {changePasswordUrl && (
           <div className="bg-card rounded-2xl border border-border p-5 flex items-center justify-between gap-4">
             <div>
@@ -205,7 +196,6 @@ export default function ProfilePage() {
           </div>
         )}
 
-        {/* Back link */}
         <div className="text-center">
           <Link
             to="/members"

@@ -1,11 +1,10 @@
 import { useState, useRef, useEffect } from 'react'
 import { useNavigate, Link } from 'react-router-dom'
 import { useAuth } from '../auth/AuthProvider'
-import config from '@/site.config'
-
-const { header, images } = config
+import { useSiteConfig } from '../config/SiteConfigContext'
 
 export default function Header() {
+  const { header } = useSiteConfig()
   const { user, isAuthenticated, isMember, isLoading, geofenced, login, logout } = useAuth()
   const navigate = useNavigate()
   const [dropdownOpen, setDropdownOpen] = useState(false)
@@ -34,7 +33,6 @@ export default function Header() {
   return (
     <header className="absolute top-0 left-0 right-0 z-50 bg-primary">
       <div className="flex items-center justify-between px-3 sm:px-4 md:px-6 py-2.5 sm:py-3">
-        {/* Left: project badge pill */}
         <div className="bg-white/80 backdrop-blur-sm rounded-full px-2 sm:px-3 py-1 sm:py-1.5 flex items-center gap-2">
           <span className="w-5 h-5 sm:w-6 sm:h-6 bg-secondary rounded flex items-center justify-center text-white font-black text-[10px] sm:text-xs flex-shrink-0">
             {header.projectBadgeInitial}
@@ -44,7 +42,6 @@ export default function Header() {
           </span>
         </div>
 
-        {/* Right group: CTA button + user icon */}
         <div className="flex items-center gap-2">
           {!isAuthenticated && !isLoading && !geofenced && (
             <button
@@ -62,7 +59,7 @@ export default function Header() {
             <button
               onClick={handleUserIconClick}
               disabled={isLoading}
-              aria-label={isAuthenticated ? 'Account menu' : 'Sign in'}
+              aria-label={isAuthenticated ? header.accountMenuAriaLabel : header.signInAriaLabel}
               className="w-8 h-8 sm:w-9 sm:h-9 rounded-full bg-foreground/70 backdrop-blur-sm border border-primary-foreground/30 flex items-center justify-center text-primary-foreground hover:bg-foreground/90 transition-colors disabled:opacity-50"
             >
               {isLoading ? (
@@ -87,7 +84,7 @@ export default function Header() {
                     </div>
                   ) : (
                     <div className="px-3 py-1.5 rounded-lg bg-muted mb-2">
-                      <p className="text-xs text-muted-foreground">Signed in</p>
+                      <p className="text-xs text-muted-foreground">{header.signedInLabel}</p>
                     </div>
                   )}
                   {isMember && (
@@ -99,7 +96,7 @@ export default function Header() {
                       <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
                       </svg>
-                      Edit Profile
+                      {header.editProfileLabel}
                     </Link>
                   )}
                   <button
@@ -109,7 +106,7 @@ export default function Header() {
                     <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" />
                     </svg>
-                    Sign Out
+                    {header.signOutLabel}
                   </button>
                 </div>
               </div>

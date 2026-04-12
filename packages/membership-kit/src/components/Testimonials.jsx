@@ -1,9 +1,9 @@
 import { Link } from 'react-router-dom'
-import config from '@/site.config'
-
-const { testimonials } = config
+import { useSiteConfig } from '../config/SiteConfigContext'
 
 export default function Testimonials() {
+  const { testimonials } = useSiteConfig()
+
   return (
     <section id="testimonials" className="bg-foreground py-6 sm:py-8 px-3 sm:px-4 md:px-8 -mt-px">
       <div className="max-w-4xl mx-auto">

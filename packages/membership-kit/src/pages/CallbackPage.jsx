@@ -1,8 +1,10 @@
 import { useEffect, useRef, useState } from 'react';
 import { Navigate } from 'react-router-dom';
 import { useAuth } from '../auth/AuthProvider';
+import { useSiteConfig } from '../config/SiteConfigContext';
 
 export default function CallbackPage() {
+  const { callback } = useSiteConfig();
   const { handleCallback } = useAuth();
   const calledRef = useRef(false);
   const [redirectTo, setRedirectTo] = useState(null);
@@ -27,7 +29,7 @@ export default function CallbackPage() {
     <div className="min-h-screen flex items-center justify-center">
       <div className="text-center">
         <div className="w-10 h-10 border-4 border-primary border-t-transparent rounded-full animate-spin mx-auto mb-4" />
-        <p className="text-muted-foreground text-sm">Completing sign-in...</p>
+        <p className="text-muted-foreground text-sm">{callback.loadingLabel}</p>
       </div>
     </div>
   );

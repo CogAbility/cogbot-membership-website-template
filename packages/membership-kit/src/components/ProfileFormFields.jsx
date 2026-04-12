@@ -1,9 +1,7 @@
 /**
  * Shared form primitives used by both OnboardingPage and ProfilePage.
  */
-import config from '@/site.config';
-
-const { onboarding: c } = config;
+import { useSiteConfig } from '../config/SiteConfigContext';
 
 export function emptyChild() {
   return { name: '', gender: '', birthMonth: '', birthDay: '', birthYear: '' };
@@ -30,7 +28,8 @@ export function fieldClass(error) {
 }
 
 export function ChildForm({ index, child, errors = {}, showRemove, onChange, onRemove }) {
-  const heading = index === 0 ? "Your child's info" : `Child ${index + 1}`;
+  const { onboarding: c } = useSiteConfig();
+  const heading = index === 0 ? c.childInfoHeading : c.childNHeadingTemplate.replace('{n}', index + 1);
 
   return (
     <div className="card space-y-4">
@@ -47,23 +46,23 @@ export function ChildForm({ index, child, errors = {}, showRemove, onChange, onR
         )}
       </div>
 
-      <FormField label="Child's first name" required error={errors[`name_${index}`]}>
+      <FormField label={c.childNameLabel} required error={errors[`name_${index}`]}>
         <input
           type="text"
           value={child.name}
           onChange={(e) => onChange('name', e.target.value)}
-          placeholder="Baby's first name"
+          placeholder={c.childNamePlaceholder}
           className={fieldClass(errors[`name_${index}`])}
         />
       </FormField>
 
-      <FormField label="Gender">
+      <FormField label={c.genderLabel}>
         <select
           value={child.gender}
           onChange={(e) => onChange('gender', e.target.value)}
           className={fieldClass()}
         >
-          <option value="">Select gender (optional)</option>
+          <option value="">{c.genderPlaceholder}</option>
           {c.genderOptions.map((g) => (
             <option key={g} value={g}>{g}</option>
           ))}
@@ -72,7 +71,7 @@ export function ChildForm({ index, child, errors = {}, showRemove, onChange, onR
 
       <div>
         <label className="block text-xs font-semibold text-foreground mb-1.5">
-          Birthday <span className="text-muted-foreground font-normal">(optional)</span>
+          {c.birthdayLabel} <span className="text-muted-foreground font-normal">{c.birthdayOptional}</span>
         </label>
         <div className="grid grid-cols-3 gap-2">
           <select
@@ -81,7 +80,7 @@ export function ChildForm({ index, child, errors = {}, showRemove, onChange, onR
             className={fieldClass()}
             aria-label="Birth month"
           >
-            <option value="">Month</option>
+            <option value="">{c.monthPlaceholder}</option>
             {c.monthOptions.map((m) => (
               <option key={m} value={m}>{m}</option>
             ))}
@@ -90,7 +89,7 @@ export function ChildForm({ index, child, errors = {}, showRemove, onChange, onR
             type="number"
             value={child.birthDay}
             onChange={(e) => onChange('birthDay', e.target.value)}
-            placeholder="Day"
+            placeholder={c.dayPlaceholder}
             min="1"
             max="31"
             className={fieldClass()}
@@ -100,7 +99,7 @@ export function ChildForm({ index, child, errors = {}, showRemove, onChange, onR
             type="number"
             value={child.birthYear}
             onChange={(e) => onChange('birthYear', e.target.value)}
-            placeholder="Year"
+            placeholder={c.yearPlaceholder}
             min="2000"
             max={new Date().getFullYear()}
             className={fieldClass()}

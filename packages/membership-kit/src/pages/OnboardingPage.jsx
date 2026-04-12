@@ -1,23 +1,18 @@
 import { useState, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../auth/AuthProvider';
+import { useSiteConfig } from '../config/SiteConfigContext';
+import { sendAuthenticatedMessage, buildOnboardingMessage } from '../services/buddyApi';
 import OnboardingProgressIndicator from '../components/OnboardingProgressIndicator';
 import { emptyChild, FormField, fieldClass, ChildForm } from '../components/ProfileFormFields';
-import { sendAuthenticatedMessage, buildOnboardingMessage } from '../services/buddyApi';
-import config from '@/site.config';
-
-const { onboarding: c } = config;
-
-const STEPS = [c.step1Label, c.step2Label, c.step3Label];
-
-// ── Step 1: Parent Info ──────────────────────────────────────────────────────
 
 function StepYourInfo({ data, onChange, onNext, onSkip }) {
+  const { onboarding: c } = useSiteConfig();
   const [errors, setErrors] = useState({});
 
   function validate() {
     const e = {};
-    if (!data.firstName.trim()) e.firstName = 'First name is required.';
+    if (!data.firstName.trim()) e.firstName = c.firstNameRequired;
     return e;
   }
 
@@ -37,7 +32,7 @@ function StepYourInfo({ data, onChange, onNext, onSkip }) {
 
       <div className="space-y-4">
         <FormField
-          label="First name"
+          label={c.firstNameLabel}
           required
           error={errors.firstName}
         >
@@ -45,18 +40,18 @@ function StepYourInfo({ data, onChange, onNext, onSkip }) {
             type="text"
             value={data.firstName}
             onChange={(e) => onChange({ ...data, firstName: e.target.value })}
-            placeholder="Your first name"
+            placeholder={c.firstNamePlaceholder}
             className={fieldClass(errors.firstName)}
             autoFocus
           />
         </FormField>
 
-        <FormField label="Last name">
+        <FormField label={c.lastNameLabel}>
           <input
             type="text"
             value={data.lastName}
             onChange={(e) => onChange({ ...data, lastName: e.target.value })}
-            placeholder="Your last name (optional)"
+            placeholder={c.lastNamePlaceholder}
             className={fieldClass()}
           />
         </FormField>
@@ -67,15 +62,14 @@ function StepYourInfo({ data, onChange, onNext, onSkip }) {
   );
 }
 
-// ── Step 2: Baby Info ────────────────────────────────────────────────────────
-
 function StepBabyInfo({ data, onChange, onNext, onBack, onSkip }) {
+  const { onboarding: c } = useSiteConfig();
   const [errors, setErrors] = useState({});
 
   function validate() {
     const e = {};
     data.forEach((child, i) => {
-      if (!child.name.trim()) e[`name_${i}`] = 'Child name is required.';
+      if (!child.name.trim()) e[`name_${i}`] = c.childNameRequired;
     });
     return e;
   }
@@ -136,9 +130,8 @@ function StepBabyInfo({ data, onChange, onNext, onBack, onSkip }) {
   );
 }
 
-// ── Step 3: All Set ──────────────────────────────────────────────────────────
-
 function StepAllSet({ parentData, childrenData, onComplete, onBack }) {
+  const { onboarding: c } = useSiteConfig();
   const fullName = [parentData.firstName, parentData.lastName].filter(Boolean).join(' ');
 
   return (
@@ -153,25 +146,26 @@ function StepAllSet({ parentData, childrenData, onComplete, onBack }) {
         <p className="text-muted-foreground text-sm mt-1 max-w-sm mx-auto">{c.completeSubheading}</p>
       </div>
 
-      {/* Summary */}
       <div className="card space-y-3">
-        <h3 className="font-bold text-foreground text-sm">Your profile</h3>
+        <h3 className="font-bold text-foreground text-sm">{c.profileSummaryHeading}</h3>
         {fullName && (
           <div className="text-sm">
-            <span className="text-muted-foreground">Name: </span>
+            <span className="text-muted-foreground">{c.nameLabel} </span>
             <span className="text-foreground font-semibold">{fullName}</span>
           </div>
         )}
         {childrenData.map((child, i) => (
           <div key={i} className="text-sm">
             <span className="text-muted-foreground">
-              {childrenData.length > 1 ? `Child ${i + 1}: ` : 'Child: '}
+              {childrenData.length > 1
+                ? c.childNLabelTemplate.replace('{n}', i + 1) + ' '
+                : c.childLabel + ' '}
             </span>
             <span className="text-foreground font-semibold">
               {child.name}
               {child.gender ? ` (${child.gender})` : ''}
               {child.birthMonth && child.birthDay && child.birthYear
-                ? `, born ${child.birthMonth} ${child.birthDay}, ${child.birthYear}`
+                ? `, ${c.bornPrefix} ${child.birthMonth} ${child.birthDay}, ${child.birthYear}`
                 : ''}
             </span>
           </div>
@@ -190,16 +184,16 @@ function StepAllSet({ parentData, childrenData, onComplete, onBack }) {
           onClick={onBack}
           className="text-sm text-muted-foreground hover:text-foreground font-semibold transition-colors text-center"
         >
-          Back
+          {c.backLabel}
         </button>
       </div>
     </div>
   );
 }
 
-// ── Shared UI pieces ─────────────────────────────────────────────────────────
-
 function StepActions({ onNext, onBack, onSkip, showBack = true }) {
+  const { onboarding: c } = useSiteConfig();
+
   return (
     <div className="flex flex-col gap-3 pt-2">
       <button
@@ -207,7 +201,7 @@ function StepActions({ onNext, onBack, onSkip, showBack = true }) {
         onClick={onNext}
         className="btn-primary w-full py-3"
       >
-        Next
+        {c.nextLabel}
       </button>
       <div className="flex items-center justify-between">
         {showBack ? (
@@ -216,7 +210,7 @@ function StepActions({ onNext, onBack, onSkip, showBack = true }) {
             onClick={onBack}
             className="text-sm text-muted-foreground hover:text-foreground font-semibold transition-colors"
           >
-            Back
+            {c.backLabel}
           </button>
         ) : <span />}
         <button
@@ -231,12 +225,12 @@ function StepActions({ onNext, onBack, onSkip, showBack = true }) {
   );
 }
 
-// ── Main Onboarding Page ─────────────────────────────────────────────────────
-
 export default function OnboardingPage() {
+  const { onboarding: c } = useSiteConfig();
   const { user } = useAuth();
   const navigate = useNavigate();
 
+  const steps = [c.step1Label, c.step2Label, c.step3Label];
   const [step, setStep] = useState(1);
   const [parentData, setParentData] = useState({
     firstName: user?.firstName || '',
@@ -265,7 +259,6 @@ export default function OnboardingPage() {
   async function handleComplete() {
     markOnboardingComplete();
     persistProfileLocally();
-    // Fire-and-forget — don't block navigation on the cascade response
     const message = buildOnboardingMessage(parentData, childrenData);
     sendAuthenticatedMessage(message, { idToken: user?.idToken }).catch((err) => {
       console.error('Onboarding: failed to save profile', err);
@@ -276,18 +269,15 @@ export default function OnboardingPage() {
   return (
     <div className="min-h-[80vh] flex items-center justify-center bg-background px-4 py-12">
       <div className="bg-card rounded-2xl shadow-xl border border-border p-8 sm:p-10 w-full max-w-lg">
-        {/* Header */}
         <div className="mb-8 text-center">
           <h1 className="text-lg font-black text-foreground">{c.welcomeHeading}</h1>
           <p className="text-muted-foreground text-sm mt-1">{c.welcomeSubheading}</p>
         </div>
 
-        {/* Progress */}
         <div className="mb-8">
-          <OnboardingProgressIndicator steps={STEPS} currentStep={step} />
+          <OnboardingProgressIndicator steps={steps} currentStep={step} />
         </div>
 
-        {/* Step content */}
         {step === 1 && (
           <StepYourInfo
             data={parentData}

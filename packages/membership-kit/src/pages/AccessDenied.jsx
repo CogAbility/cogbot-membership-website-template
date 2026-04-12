@@ -1,7 +1,9 @@
 import { Link } from 'react-router-dom';
 import { useAuth } from '../auth/AuthProvider';
+import { useSiteConfig } from '../config/SiteConfigContext';
 
 export default function AccessDenied({ reason, variant }) {
+  const { accessDenied: c } = useSiteConfig();
   const { user, logout } = useAuth();
   const isGeofenced = variant === 'geofenced';
 
@@ -22,26 +24,26 @@ export default function AccessDenied({ reason, variant }) {
         </div>
 
         <h1 className="text-xl sm:text-2xl font-black text-foreground mb-2">
-          {isGeofenced ? 'Not Available in Your Area' : 'Access Restricted'}
+          {isGeofenced ? c.geofencedHeading : c.restrictedHeading}
         </h1>
 
         {user && (
-          <p className="text-xs text-muted-foreground mb-4">Signed in as {user.email}</p>
+          <p className="text-xs text-muted-foreground mb-4">{c.signedInAsPrefix} {user.email}</p>
         )}
 
         <p className="text-muted-foreground text-xs sm:text-sm mb-8 leading-relaxed">
-          {reason || 'You do not have permission to view this page. Please contact an administrator if you believe this is a mistake.'}
+          {reason || c.defaultReason}
         </p>
 
         <div className="flex flex-col gap-3">
           <Link to="/" className="btn-primary w-full text-center py-3">
-            Return to Home
+            {c.homeLabel}
           </Link>
           <button
             onClick={logout}
             className="inline-flex items-center justify-center w-full px-6 py-3 rounded-full border-2 border-primary text-primary font-bold text-sm transition-all duration-200 hover:bg-primary hover:text-white"
           >
-            Sign Out
+            {c.signOutLabel}
           </button>
         </div>
       </div>

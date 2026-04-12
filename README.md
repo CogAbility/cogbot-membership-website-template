@@ -2,6 +2,8 @@
 
 A membership-gated website template powered by CogBot chat and IBM App ID authentication. Use this template to create a branded membership site for your organization — customize it by editing one config file.
 
+All reusable UI components, authentication, and CogBot integration live in the **[@cogbot/membership-kit](packages/membership-kit/)** package. The template itself is a thin shell: a config file, styles, static assets, and a two-line `main.jsx` that boots the kit.
+
 ## How It Works
 
 ```
@@ -195,6 +197,25 @@ meta: {
 
 If you omit the `meta` section, the title defaults to `botName | siteName` and the description defaults to `hero.subtitle`.
 
+### Page overrides
+
+For advanced customization beyond config strings, you can replace entire pages with your own React components. In `src/main.jsx`, pass an `overrides` prop to `App`:
+
+```jsx
+import { App } from '@cogbot/membership-kit';
+import config from '@/site.config';
+import MyCustomMembersPage from './pages/MyMembersPage';
+
+createRoot(document.getElementById('root')).render(
+  <App
+    config={config}
+    overrides={{ MembersPage: MyCustomMembersPage }}
+  />,
+);
+```
+
+Overridable components: `Header`, `Footer`, `LandingPage`, `MembersPage`, `CallbackPage`, `OnboardingPage`, `ProfilePage`. Any component not overridden uses the default from the kit.
+
 ### Colors and theme
 
 Edit the CSS custom properties in `src/index.css` under `:root`:
@@ -332,11 +353,35 @@ The dev server starts at `http://localhost:5174`. During development, `/cogbot-a
 
 ---
 
-## Pulling Template Updates
+## Updating the Kit
 
-> **Note:** This requires git command-line knowledge. If you're using Lovable or another AI tool and aren't comfortable with git, your CogAbility contact can help you pull updates when needed.
+The `@cogbot/membership-kit` package is versioned with semver and published to npm. When a new version is released, update your project:
 
-When this template is updated (bug fixes, new features), you can pull the changes into your client repo:
+```bash
+npm update @cogbot/membership-kit
+```
+
+To pin to a specific version:
+
+```bash
+npm install @cogbot/membership-kit@0.2.0
+```
+
+Check the [package changelog](packages/membership-kit/CHANGELOG.md) for details on each release. Bug fixes ship as patch versions, new features as minor versions, and breaking changes (rare) as major versions.
+
+### Automatic update notifications (dev mode)
+
+During local development, the kit checks npm once per day for newer versions. If an update is available, you'll see a color-coded console message:
+
+- **🟢 Patch** — bug fix, safe to update immediately
+- **🟡 Feature** — new functionality, safe to update (no breaking changes)
+- **🔴 BREAKING** — major version bump, check the [changelog](packages/membership-kit/CHANGELOG.md) before updating
+
+This check only runs in dev mode and never in production. To disable it, remove the `checkForUpdates()` call from `src/main.jsx`.
+
+### Pulling Template Shell Updates
+
+If the template shell itself changes (e.g. updated `vite.config.js`, `tailwind.config.js`, or deployment configs), you can pull those changes with git:
 
 ```bash
 # One-time setup: add the template as a remote
@@ -347,7 +392,7 @@ git fetch template
 git merge template/main --allow-unrelated-histories
 ```
 
-Since your customizations live only in `site.config.js`, `.env`, and `public/`, merges are typically clean with no conflicts.
+Since the template only contains configuration files (no application code), merges are typically clean.
 
 ---
 
@@ -364,39 +409,26 @@ cogbot-membership-website-template/
     org-logo.svg            ← Org logo (replace with your own)
     favicon.svg             ← Browser tab icon
   src/
-    auth/
-      AuthProvider.jsx     App ID login/logout and user state
-      userManager.js       oidc-client-ts configuration
-      ProtectedRoute.jsx   Requires authentication
-      RoleGate.jsx         Requires CMG membership + optional role
-      useAuthorization.js  Calls CMG /auth/validate
-    components/
-      Header.jsx
-      Footer.jsx
-      Hero.jsx
-      Features.jsx
-      Testimonials.jsx
-      About.jsx
-      BuddyChat.jsx                  Chat UI component
-      CogBotEmbed.jsx                Wrapper for BuddyChat
-      OnboardingProgressIndicator.jsx  Step progress indicator
-      ProfileFormFields.jsx            Shared form fields (name, child info)
-    pages/
-      LandingPage.jsx      Public page
-      MembersPage.jsx      Member-only page with CogBot
-      OnboardingPage.jsx   New member 3-step onboarding wizard
-      ProfilePage.jsx      Member profile management
-      LoginPage.jsx        Shown when unauthenticated
-      AccessDenied.jsx     Shown when not authorized
-      CallbackPage.jsx     OIDC callback handler
-    hooks/
-      useBuddyChat.js      Chat session state
-    services/
-      buddyApi.js          CogBot HTTP API client (anonymous + authenticated)
-    App.jsx                Routes
-    main.jsx               Entry point
+    main.jsx               Entry point — boots @cogbot/membership-kit with your config
     index.css              Design tokens and global styles
-  vite.config.js           Build config, dev proxy, and site meta plugin
+    assets/                Static images (hero, etc.)
+  packages/
+    membership-kit/        ← @cogbot/membership-kit npm package (all reusable code)
+      src/
+        App.jsx            Application shell with routing and providers
+        index.js           Public API surface (all exports)
+        config/            SiteConfigContext (React Context for config injection)
+        auth/              AuthProvider, ProtectedRoute, RoleGate, userManager
+        services/          buddyApi (CogBot HTTP client)
+        hooks/             useBuddyChat (chat state)
+        components/        Header, Footer, Hero, Features, About, Testimonials,
+                           BuddyChat, CogBotEmbed, ProfileFormFields, etc.
+        pages/             LandingPage, MembersPage, OnboardingPage, ProfilePage,
+                           LoginPage, AccessDenied, CallbackPage
+      scripts/
+        check-secrets.js   Pre-publish secret scanner
+  vite.config.js           Build config, dev proxy, package alias
+  tailwind.config.js       Tailwind config (scans both src/ and packages/)
 ```
 
 ---

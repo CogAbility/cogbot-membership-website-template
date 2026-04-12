@@ -38,8 +38,8 @@ export default {
   // Image paths (relative to public/)
   // Replace the placeholder files with your own images (any format: svg, webp, png).
   images: {
-    botIcon: '/bot-icon.svg',          // Chat avatar and header icon
-    orgLogo: '/org-logo.svg',          // "Presented by" logo in hero
+    botIcon: '/buddy-icon.webp',       // Chat avatar and header icon
+    orgLogo: '/bab-full-logo.webp',    // "Presented by" logo in hero
     favicon: '/favicon.svg',
   },
 
@@ -49,6 +49,11 @@ export default {
     projectBadgeInitial: 'B',
     memberBadgeLabel: 'Build a Brain Member',
     signInLabel: 'Become a Member',
+    editProfileLabel: 'Edit Profile',
+    signOutLabel: 'Sign Out',
+    signedInLabel: 'Signed in',
+    accountMenuAriaLabel: 'Account menu',
+    signInAriaLabel: 'Sign in',
   },
 
   // Hero section (public landing page, top of page)
@@ -61,6 +66,11 @@ export default {
       { value: '24/7', label: 'Available' },
       { value: '100%', label: 'Free' },
     ],
+    presentedByLabel: 'Presented by',
+    loadingLabel: 'Loading...',
+    geofenceHeading: 'Not Available in Your Area',
+    defaultGeofenceMessage: 'This service is not available in your area.',
+    chatHeaderColor: '#1e3a5f',
   },
 
   // Features section
@@ -165,6 +175,10 @@ export default {
       'Learn about age-appropriate activities',
       "Understand what's developmentally normal",
     ],
+    greetingTemplate: 'Hi, {firstName} \u{1F44B}',
+    signOutLabel: 'Sign Out',
+    tipBullet: '\u2192',
+    memberEmoji: '\u{1F9E0}',
   },
 
   // Footer
@@ -184,6 +198,7 @@ export default {
     ],
   },
 
+  // Profile page
   profile: {
     heading: 'Your Profile',
     subheading: 'Update your info and Buddy will use it in future conversations.',
@@ -195,8 +210,11 @@ export default {
     changePasswordSub: 'Manage your password through IBM App ID.',
     backLabel: 'Back to Chat',
     addChildLabel: '+ Add another child',
+    savingLabel: 'Saving...',
+    backAriaLabel: 'Back to chat',
   },
 
+  // Onboarding flow
   onboarding: {
     welcomeHeading: 'Welcome to Build a Brain!',
     welcomeSubheading: "Let's get to know you and your little one so Buddy can give you the best guidance.",
@@ -215,5 +233,63 @@ export default {
     completeButtonLabel: 'Start Chatting',
     genderOptions: ['Boy', 'Girl', 'Non-binary', 'Prefer not to say'],
     monthOptions: ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'],
+    nextLabel: 'Next',
+    backLabel: 'Back',
+    firstNameLabel: 'First name',
+    firstNamePlaceholder: 'Your first name',
+    lastNameLabel: 'Last name',
+    lastNamePlaceholder: 'Your last name (optional)',
+    firstNameRequired: 'First name is required.',
+    childNameRequired: 'Child name is required.',
+    profileSummaryHeading: 'Your profile',
+    nameLabel: 'Name:',
+    childLabel: 'Child:',
+    childNLabelTemplate: 'Child {n}:',
+    bornPrefix: 'born',
+    childInfoHeading: "Your child's info",
+    childNHeadingTemplate: 'Child {n}',
+    childNameLabel: "Child's first name",
+    childNamePlaceholder: "Baby's first name",
+    genderLabel: 'Gender',
+    genderPlaceholder: 'Select gender (optional)',
+    birthdayLabel: 'Birthday',
+    birthdayOptional: '(optional)',
+    monthPlaceholder: 'Month',
+    dayPlaceholder: 'Day',
+    yearPlaceholder: 'Year',
+  },
+
+  // Login page
+  login: {
+    logoInitial: 'B',
+    heading: 'Join Build a Brain',
+    subheading: "Sign in or create an account to become a Build a Brain member \u2014 it's free!",
+    errorPrefix: 'Sign-in error:',
+    loadingLabel: 'Signing in...',
+    buttonLabel: 'Sign in with IBM App ID',
+    footerText: 'New here? No problem \u2014 signing in automatically creates your free membership.',
+  },
+
+  // Access denied page
+  accessDenied: {
+    geofencedHeading: 'Not Available in Your Area',
+    restrictedHeading: 'Access Restricted',
+    signedInAsPrefix: 'Signed in as',
+    defaultReason: 'You do not have permission to view this page. Please contact an administrator if you believe this is a mistake.',
+    homeLabel: 'Return to Home',
+    signOutLabel: 'Sign Out',
+  },
+
+  // Callback page (OAuth redirect)
+  callback: {
+    loadingLabel: 'Completing sign-in...',
+  },
+
+  // Role gate (access checking UI)
+  roleGate: {
+    checkingLabel: 'Checking your access...',
+    defaultGeofenceMessage: 'This service is not available in your area.',
+    notMemberMessage: 'You are not a member of this site.',
+    roleRequiredTemplate: 'You need the "{role}" role to access this area.',
   },
 }

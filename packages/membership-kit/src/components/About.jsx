@@ -1,9 +1,9 @@
 import { Link } from 'react-router-dom'
-import config from '@/site.config'
-
-const { about } = config
+import { useSiteConfig } from '../config/SiteConfigContext'
 
 export default function About() {
+  const { about } = useSiteConfig()
+
   return (
     <section id="about" className="bg-card py-10 sm:py-16 px-3 sm:px-4 md:px-8 -mt-px">
       <div className="max-w-4xl mx-auto text-center">

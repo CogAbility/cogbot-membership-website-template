@@ -1,12 +1,13 @@
 import { useState, useRef, useEffect } from 'react';
 import useBuddyChat from '../hooks/useBuddyChat';
-import config from '@/site.config';
+import { useSiteConfig } from '../config/SiteConfigContext';
 
 function prepareHtml(html) {
   return html.replace(/<a\s/gi, '<a target="_blank" rel="noopener noreferrer" ');
 }
 
-export default function BuddyChat({ height, className = '' }) {
+export default function BuddyChat({ height, className = '', hideHeader = false }) {
+  const { hero, images, botName } = useSiteConfig();
   const { messages, isLoading, isInitializing, error, sendMessage, retry } = useBuddyChat();
   const [input, setInput] = useState('');
   const messagesEndRef = useRef(null);
@@ -29,6 +30,13 @@ export default function BuddyChat({ height, className = '' }) {
       className={`w-full flex flex-col overflow-hidden rounded-2xl shadow-xl border border-gray-200 bg-white ${className}`}
       style={height ? { height } : undefined}
     >
+      {!hideHeader && (
+        <div className="flex items-center gap-2.5 px-4 py-2.5 flex-shrink-0" style={{ backgroundColor: hero.chatHeaderColor }}>
+          <img src={images.botIcon} alt="" className="h-8 w-auto object-contain" />
+          <span className="text-white font-bold text-sm">{botName}</span>
+          <span className="w-2.5 h-2.5 rounded-full bg-green-400" />
+        </div>
+      )}
       {/* Messages area */}
       <div className="flex-1 overflow-y-auto px-4 py-4 space-y-3 min-h-0 bg-gray-50/60">
         {isInitializing && (
@@ -121,11 +129,12 @@ function MessageBubble({ message }) {
 }
 
 function BuddyAvatar() {
+  const { images } = useSiteConfig();
   return (
     <img
-      src={config.images.botIcon}
+      src={images.botIcon}
       alt=""
-      className="w-7 h-7 rounded-full object-cover flex-shrink-0 shadow-sm"
+      className="h-9 w-auto object-contain flex-shrink-0"
     />
   );
 }

@@ -1,8 +1,8 @@
-import config from '@/site.config'
-
-const { features } = config
+import { useSiteConfig } from '../config/SiteConfigContext'
 
 export default function Features() {
+  const { features } = useSiteConfig()
+
   return (
     <section id="features" className="bg-card py-10 sm:py-16 px-3 sm:px-4 md:px-8 -mt-px">
       <div className="max-w-4xl mx-auto">

@@ -31,6 +31,7 @@ export default defineConfig(({ mode }) => {
     resolve: {
       alias: {
         '@/site.config': path.resolve(__dirname, 'site.config.js'),
+        '@cogbot/membership-kit': path.resolve(__dirname, 'packages/membership-kit/src'),
       },
     },
     server: {
