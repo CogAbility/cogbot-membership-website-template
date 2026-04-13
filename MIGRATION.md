@@ -41,10 +41,11 @@ export default {
 
   // NEW: Access denied page
   accessDenied: {
-    heading: 'Access Restricted',
-    notMemberReason: "You don't have access...",
-    geofencedReason: 'This service is not available in your area.',
-    backLabel: 'Back to Home',
+    geofencedHeading: 'Not Available in Your Area',
+    restrictedHeading: 'Access Restricted',
+    signedInAsPrefix: 'Signed in as',
+    defaultReason: "You do not have permission to view this page. Please contact an administrator if you believe this is a mistake.",
+    homeLabel: 'Return to Home',
     signOutLabel: 'Sign Out',
   },
 
@@ -55,9 +56,10 @@ export default {
 
   // NEW: Role gate messages
   roleGate: {
-    loadingMessage: 'Checking access...',
+    checkingLabel: 'Checking your access...',
     defaultGeofenceMessage: 'This content is not available in your region.',
-    roleRequiredTemplate: 'You need the "{role}" role to access this page.',
+    notMemberMessage: 'You are not a member of this site.',
+    roleRequiredTemplate: 'You need the "{role}" role to access this area.',
   },
 
   // EXPANDED: header, hero, members, onboarding, profile sections
@@ -153,23 +155,17 @@ In local development, leave `VITE_COGBOT_HOST` unset in `.env` so the proxy defa
 
 ### 6. Update `tailwind.config.js`
 
-Add the package directory to the content scan paths:
+Add the package directory to the content scan paths so Tailwind can detect the kit's utility classes:
 
 ```js
 export default {
   content: [
     "./index.html",
     "./src/**/*.{js,ts,jsx,tsx}",
-    "./packages/membership-kit/src/**/*.{js,ts,jsx,tsx}",
+    "./node_modules/@cogability/membership-kit/src/**/*.{js,ts,jsx,tsx}",
   ],
   // ...
 };
-```
-
-If you installed from npm, use the `node_modules` path instead:
-
-```js
-"./node_modules/@cogability/membership-kit/src/**/*.{js,ts,jsx,tsx}",
 ```
 
 ### 7. Verify the build
@@ -210,4 +206,4 @@ export default function MyMembersPage() {
 }
 ```
 
-See `packages/membership-kit/src/index.js` for the full list of exports.
+See `node_modules/@cogability/membership-kit/src/index.js` for the full list of exports, or check the [package on npm](https://www.npmjs.com/package/@cogability/membership-kit).

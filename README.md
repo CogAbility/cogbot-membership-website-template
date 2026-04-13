@@ -2,7 +2,7 @@
 
 A membership-gated website template powered by CogBot chat and IBM App ID authentication. Use this template to create a branded membership site for your organization — customize it by editing one config file.
 
-All reusable UI components, authentication, and CogBot integration live in the **[@cogability/membership-kit](packages/membership-kit/)** package. The template itself is a thin shell: a config file, styles, static assets, and a two-line `main.jsx` that boots the kit.
+All reusable UI components, authentication, and CogBot integration live in the **[@cogability/membership-kit](https://www.npmjs.com/package/@cogability/membership-kit)** npm package. The template itself is a thin shell: a config file, styles, static assets, and a `main.jsx` that boots the kit.
 
 ## How It Works
 
@@ -152,6 +152,8 @@ Before going live, make sure you've updated everything. Use this as a quick refe
   - [ ] `onboarding` — welcome heading, step labels
   - [ ] `profile` — headings and labels
   - [ ] `footer` — brand name, copyright, nav links
+  - [ ] `login` — login page heading and button label (optional — defaults are generic)
+  - [ ] `accessDenied` — access-denied page headings and button labels (optional)
 - [ ] **`public/`** — replace placeholder images with your own:
   - [ ] `bot-icon.svg` (or your own format) — chat avatar
   - [ ] `org-logo.svg` (or your own format) — org logo
@@ -174,7 +176,7 @@ Edit `site.config.js`. Every user-visible string lives here:
 | `meta` | Page title, meta description, OG tags (SEO and social sharing) |
 | `images` | Paths to logo and icon files in `public/` |
 | `header` | Project badge, sign-in button label, member badge |
-| `hero` | Tagline, subtitle, stats, chat label |
+| `hero` | Tagline, subtitle, stats, chat label, geofence notice text |
 | `features` | Section heading and feature cards |
 | `testimonials` | Section heading and testimonial cards |
 | `about` | Section heading, paragraphs, checklist, CTAs |
@@ -182,6 +184,10 @@ Edit `site.config.js`. Every user-visible string lives here:
 | `onboarding` | Wizard headings, step labels, gender/month options, skip label |
 | `profile` | Profile page headings, save label, change password label |
 | `footer` | Brand name, nav links, copyright, powered-by |
+| `login` | Login page heading, subheading, button label, footer text |
+| `accessDenied` | Headings and actions shown on the access-denied screen |
+| `callback` | Loading message shown during the OAuth redirect |
+| `roleGate` | Messages shown while checking membership/roles |
 
 ### Page title and SEO
 
@@ -398,17 +404,25 @@ To pin to a specific version:
 npm install @cogability/membership-kit@0.2.0
 ```
 
-Check the [package changelog](packages/membership-kit/CHANGELOG.md) for details on each release. Bug fixes ship as patch versions, new features as minor versions, and breaking changes (rare) as major versions.
+Check the [package changelog on npm](https://www.npmjs.com/package/@cogability/membership-kit?activeTab=versions) for details on each release. Bug fixes ship as patch versions, new features as minor versions, and breaking changes (rare) as major versions.
 
 ### Automatic update notifications (dev mode)
 
-During local development, the kit checks npm once per day for newer versions. If an update is available, you'll see a color-coded console message:
+During local development, a banner appears in the bottom-right corner of the page whenever a newer version of `@cogability/membership-kit` is available on npm. The check runs once per day (result is cached in `localStorage`) and is silenced automatically in production builds.
+
+The banner is color-coded by severity:
 
 - **Patch** — bug fix, safe to update immediately
 - **Feature** — new functionality, safe to update (no breaking changes)
-- **BREAKING** — major version bump, check the [changelog](packages/membership-kit/CHANGELOG.md) before updating
+- **BREAKING** — major version bump, review the package changelog before updating
 
-This check only runs in dev mode and never in production. To disable it, remove the `checkForUpdates()` call from `src/main.jsx`.
+The banner is rendered by `src/KitUpdateBanner.jsx`, which is imported and mounted in `src/main.jsx`:
+
+```jsx
+<KitUpdateBanner installedVersion="0.2.0" />
+```
+
+To disable the update check entirely, remove the `<KitUpdateBanner .../>` line (and its import) from `src/main.jsx`.
 
 ### Pulling Template Shell Updates
 
