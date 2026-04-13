@@ -1,7 +1,7 @@
 import { StrictMode } from 'react';
 import { createRoot } from 'react-dom/client';
 import './index.css';
-import { App, checkForUpdates } from '@cogbot/membership-kit';
+import { App, checkForUpdates } from '@cogability/membership-kit';
 import config from '@/site.config';
 
 checkForUpdates();

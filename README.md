@@ -2,7 +2,7 @@
 
 A membership-gated website template powered by CogBot chat and IBM App ID authentication. Use this template to create a branded membership site for your organization — customize it by editing one config file.
 
-All reusable UI components, authentication, and CogBot integration live in the **[@cogbot/membership-kit](packages/membership-kit/)** package. The template itself is a thin shell: a config file, styles, static assets, and a two-line `main.jsx` that boots the kit.
+All reusable UI components, authentication, and CogBot integration live in the **[@cogability/membership-kit](packages/membership-kit/)** package. The template itself is a thin shell: a config file, styles, static assets, and a two-line `main.jsx` that boots the kit.
 
 ## How It Works
 
@@ -202,7 +202,7 @@ If you omit the `meta` section, the title defaults to `botName | siteName` and t
 For advanced customization beyond config strings, you can replace entire pages with your own React components. In `src/main.jsx`, pass an `overrides` prop to `App`:
 
 ```jsx
-import { App } from '@cogbot/membership-kit';
+import { App } from '@cogability/membership-kit';
 import config from '@/site.config';
 import MyCustomMembersPage from './pages/MyMembersPage';
 
@@ -386,16 +386,16 @@ The Vite proxy handles CORS automatically during local development — no CORS c
 
 ## Updating the Kit
 
-The `@cogbot/membership-kit` package is versioned with semver and published to npm. When a new version is released, update your project:
+The `@cogability/membership-kit` package is versioned with semver and published to npm. When a new version is released, update your project:
 
 ```bash
-npm update @cogbot/membership-kit
+npm update @cogability/membership-kit
 ```
 
 To pin to a specific version:
 
 ```bash
-npm install @cogbot/membership-kit@0.2.0
+npm install @cogability/membership-kit@0.2.0
 ```
 
 Check the [package changelog](packages/membership-kit/CHANGELOG.md) for details on each release. Bug fixes ship as patch versions, new features as minor versions, and breaking changes (rare) as major versions.
@@ -440,26 +440,17 @@ cogbot-membership-website-template/
     org-logo.svg            <- Org logo (replace with your own)
     favicon.svg             <- Browser tab icon
   src/
-    main.jsx               Entry point — boots @cogbot/membership-kit with your config
+    main.jsx               Entry point — boots @cogability/membership-kit with your config
     index.css              Design tokens and global styles
     assets/                Static images (hero, etc.)
-  packages/
-    membership-kit/        <- @cogbot/membership-kit npm package (all reusable code)
-      src/
-        App.jsx            Application shell with routing and providers
-        index.js           Public API surface (all exports)
-        config/            SiteConfigContext (React Context for config injection)
-        auth/              AuthProvider, ProtectedRoute, RoleGate, userManager
-        services/          buddyApi (CogBot HTTP client + SSE streaming)
-        hooks/             useBuddyChat (chat state + streaming text)
-        components/        Header, Footer, Hero, Features, About, Testimonials,
-                           BuddyChat, CogBotEmbed, ProfileFormFields, etc.
-        pages/             LandingPage, MembersPage, OnboardingPage, ProfilePage,
-                           LoginPage, AccessDenied, CallbackPage
-      scripts/
-        check-secrets.js   Pre-publish secret scanner
-  vite.config.js           Build config, dev proxy (CAM), package alias
-  tailwind.config.js       Tailwind config (scans both src/ and packages/)
+  vite.config.js           Build config, dev proxy (CAM)
+  tailwind.config.js       Tailwind config
+```
+
+All reusable code (auth, chat, pages, components, hooks, streaming) lives in the **`@cogability/membership-kit`** npm package (`node_modules/@cogability/membership-kit`). Update it with:
+
+```bash
+npm update @cogability/membership-kit
 ```
 
 ---

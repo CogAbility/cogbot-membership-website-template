@@ -1,10 +1,10 @@
 # Migration Guide
 
-This guide covers migrating from the monolithic template (all code in `src/`) to the `@cogbot/membership-kit` package architecture.
+This guide covers migrating from the monolithic template (all code in `src/`) to the `@cogability/membership-kit` package architecture.
 
 ## Who needs to migrate?
 
-If you created your site **before** the `@cogbot/membership-kit` extraction, your project has application code directly in `src/`. This guide walks you through switching to the package-based architecture so you can receive updates via `npm update` instead of git merges.
+If you created your site **before** the `@cogability/membership-kit` extraction, your project has application code directly in `src/`. This guide walks you through switching to the package-based architecture so you can receive updates via `npm update` instead of git merges.
 
 If you created your site **after** the extraction, you're already on the new architecture — no migration needed.
 
@@ -12,8 +12,8 @@ If you created your site **after** the extraction, you're already on the new arc
 
 | Before | After |
 |---|---|
-| All components, auth, hooks, and services live in `src/` | All reusable code lives in `packages/membership-kit/` (published as `@cogbot/membership-kit`) |
-| Updates via `git merge` from the template remote | Updates via `npm update @cogbot/membership-kit` |
+| All components, auth, hooks, and services live in `src/` | All reusable code lives in `packages/membership-kit/` (published as `@cogability/membership-kit`) |
+| Updates via `git merge` from the template remote | Updates via `npm update @cogability/membership-kit` |
 | Components import config with `import config from '@/site.config'` | Components use `useSiteConfig()` React hook |
 | Hardcoded English strings scattered across components | All user-facing strings centralized in `site.config.js` |
 | No page override mechanism | Pages are overridable via the `overrides` prop on `<App>` |
@@ -70,7 +70,7 @@ The easiest approach: copy the entire `site.config.js` from the updated template
 ### 2. Install the package
 
 ```bash
-npm install @cogbot/membership-kit
+npm install @cogability/membership-kit
 ```
 
 ### 3. Replace `src/main.jsx`
@@ -81,7 +81,7 @@ Replace the contents of `src/main.jsx`:
 import { StrictMode } from 'react';
 import { createRoot } from 'react-dom/client';
 import './index.css';
-import { App } from '@cogbot/membership-kit';
+import { App } from '@cogability/membership-kit';
 import config from '@/site.config';
 
 createRoot(document.getElementById('root')).render(
@@ -109,10 +109,9 @@ After this, `src/` should contain only `main.jsx`, `index.css`, and `assets/`.
 
 ### 5. Update `vite.config.js`
 
-Add the package alias for local development (if using the monorepo layout with `packages/membership-kit/`):
+Add the `/cogbot-api` proxy so the dev server forwards chat API calls to **CAM** (CogBot Access Manager). The `configure` callback sets SSE-specific headers to prevent response buffering during streaming:
 
 ```js
-import path from 'path';
 import { defineConfig, loadEnv } from 'vite';
 
 export default defineConfig(({ mode }) => {
@@ -121,8 +120,7 @@ export default defineConfig(({ mode }) => {
   return {
     resolve: {
       alias: {
-        '@': path.resolve(__dirname, './src'),
-        '@cogbot/membership-kit': path.resolve(__dirname, 'packages/membership-kit/src'),
+        '@/site.config': path.resolve(__dirname, 'site.config.js'),
       },
     },
     server: {
@@ -149,9 +147,9 @@ export default defineConfig(({ mode }) => {
 });
 ```
 
-The `/cogbot-api` proxy forwards chat API requests to the **CAM** (CogBot Access Manager) service. The `configure` callback sets SSE-specific headers to prevent response buffering during streaming. In local development, leave `VITE_COGBOT_HOST` unset in `.env` so the proxy defaults to `http://localhost:8085`.
+In local development, leave `VITE_COGBOT_HOST` unset in `.env` so the proxy defaults to `http://localhost:8085`.
 
-If you installed from npm (not using local packages), you can skip the `@cogbot/membership-kit` alias — Vite will resolve it from `node_modules` automatically.
+`@cogability/membership-kit` is resolved automatically from `node_modules` — no alias needed.
 
 ### 6. Update `tailwind.config.js`
 
@@ -171,7 +169,7 @@ export default {
 If you installed from npm, use the `node_modules` path instead:
 
 ```js
-"./node_modules/@cogbot/membership-kit/src/**/*.{js,ts,jsx,tsx}",
+"./node_modules/@cogability/membership-kit/src/**/*.{js,ts,jsx,tsx}",
 ```
 
 ### 7. Verify the build
@@ -187,7 +185,7 @@ The output should be similar in size to before. If Tailwind reports "No utility 
 If you had customized any pages beyond what `site.config.js` supports, you can keep your custom versions using the override system:
 
 ```jsx
-import { App } from '@cogbot/membership-kit';
+import { App } from '@cogability/membership-kit';
 import config from '@/site.config';
 import MyMembersPage from './pages/MyMembersPage';
 
@@ -203,7 +201,7 @@ Move your custom page files to `src/pages/` (or anywhere in `src/`) and import t
 Custom pages can use any export from the package:
 
 ```jsx
-import { useAuth, useSiteConfig, CogBotEmbed, useBuddyChat } from '@cogbot/membership-kit';
+import { useAuth, useSiteConfig, CogBotEmbed, useBuddyChat } from '@cogability/membership-kit';
 
 export default function MyMembersPage() {
   const { user } = useAuth();

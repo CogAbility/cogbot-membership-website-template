@@ -1,4 +1,4 @@
-name: Publish @cogbot/membership-kit
+name: Publish @cogability/membership-kit
 
 on:
   push:
