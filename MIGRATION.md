@@ -12,8 +12,8 @@ If you created your site **after** the extraction, you're already on the new arc
 
 | Before | After |
 |---|---|
-| All components, auth, hooks, and services live in `src/` | All reusable code lives in `packages/membership-kit/` (published as `@cogability/membership-kit`) |
-| Updates via `git merge` from the template remote | Updates via `npm update @cogability/membership-kit` |
+| All components, auth, hooks, and services live in `src/` | All reusable code lives in `packages/membership-kit/src/` (published as `@cogability/membership-kit`) |
+| Updates via `git merge` from the template remote | Updates via `git merge template/main` — brings kit source and shell changes together |
 | Components import config with `import config from '@/site.config'` | Components use `useSiteConfig()` React hook |
 | Hardcoded English strings scattered across components | All user-facing strings centralized in `site.config.js` |
 | No page override mechanism | Pages are overridable via the `overrides` prop on `<App>` |
@@ -162,11 +162,14 @@ export default {
   content: [
     "./index.html",
     "./src/**/*.{js,ts,jsx,tsx}",
+    "./packages/membership-kit/src/**/*.{js,ts,jsx,tsx}",
     "./node_modules/@cogability/membership-kit/src/**/*.{js,ts,jsx,tsx}",
   ],
   // ...
 };
 ```
+
+Both paths are included: the `packages/` path is used when working from the monorepo (kit resolved via npm workspace symlink), and the `node_modules/` path is a fallback that also works in all cases.
 
 ### 7. Verify the build
 
@@ -206,4 +209,4 @@ export default function MyMembersPage() {
 }
 ```
 
-See `node_modules/@cogability/membership-kit/src/index.js` for the full list of exports, or check the [package on npm](https://www.npmjs.com/package/@cogability/membership-kit).
+See [`packages/membership-kit/src/index.js`](packages/membership-kit/src/index.js) for the full list of exports, or check the [package on npm](https://www.npmjs.com/package/@cogability/membership-kit).

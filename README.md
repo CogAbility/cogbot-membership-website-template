@@ -2,7 +2,7 @@
 
 A membership-gated website template powered by CogBot chat and IBM App ID authentication. Use this template to create a branded membership site for your organization — customize it by editing one config file.
 
-All reusable UI components, authentication, and CogBot integration live in the **[@cogability/membership-kit](https://www.npmjs.com/package/@cogability/membership-kit)** npm package. The template itself is a thin shell: a config file, styles, static assets, and a `main.jsx` that boots the kit.
+All reusable UI components, authentication, and CogBot integration live in the **`@cogability/membership-kit`** package — its source is at `packages/membership-kit/` in this repo and is published to npm as [`@cogability/membership-kit`](https://www.npmjs.com/package/@cogability/membership-kit). The template shell is a thin wrapper on top: a config file, styles, static assets, and a `main.jsx` that boots the kit.
 
 ## How It Works
 
@@ -392,52 +392,42 @@ The Vite proxy handles CORS automatically during local development — no CORS c
 
 ## Updating the Kit
 
-The `@cogability/membership-kit` package is versioned with semver and published to npm. When a new version is released, update your project:
-
-```bash
-npm update @cogability/membership-kit
-```
-
-To pin to a specific version:
-
-```bash
-npm install @cogability/membership-kit@0.2.0
-```
-
-Check the [package changelog on npm](https://www.npmjs.com/package/@cogability/membership-kit?activeTab=versions) for details on each release. Bug fixes ship as patch versions, new features as minor versions, and breaking changes (rare) as major versions.
-
-### Automatic update notifications (dev mode)
-
-During local development, a banner appears in the bottom-right corner of the page whenever a newer version of `@cogability/membership-kit` is available on npm. The check runs once per day (result is cached in `localStorage`) and is silenced automatically in production builds.
-
-The banner is color-coded by severity:
-
-- **Patch** — bug fix, safe to update immediately
-- **Feature** — new functionality, safe to update (no breaking changes)
-- **BREAKING** — major version bump, review the package changelog before updating
-
-The banner is rendered by `src/KitUpdateBanner.jsx`, which is imported and mounted in `src/main.jsx`:
-
-```jsx
-<KitUpdateBanner installedVersion="0.2.0" />
-```
-
-To disable the update check entirely, remove the `<KitUpdateBanner .../>` line (and its import) from `src/main.jsx`.
-
-### Pulling Template Shell Updates
-
-If the template shell itself changes (e.g. updated `vite.config.js`, `tailwind.config.js`, or deployment configs), you can pull those changes with git:
+The kit source lives at `packages/membership-kit/src/` inside this repo. When CogAbility releases an update — bug fixes, new features, or component changes — they are committed to this repo. To pull updates into your own site, use the template remote:
 
 ```bash
 # One-time setup: add the template as a remote
 git remote add template https://github.com/CogAbility/cogbot-membership-website-template.git
 
-# Pull updates from the template
+# Pull updates (kit and template shell together)
 git fetch template
 git merge template/main --allow-unrelated-histories
 ```
 
-Since the template only contains configuration files (no application code), merges are typically clean.
+This brings in both kit source changes (under `packages/membership-kit/src/`) and any template shell changes (build configs, `site.config.js` schema additions, etc.) in a single merge.
+
+Merges are typically clean because your customizations live only in `site.config.js`, `public/`, and `src/index.css` — files that CogAbility does not touch.
+
+### What changes in each release
+
+Kit releases follow semantic versioning:
+
+- **Patch** (`0.2.x`) — bug fix, safe to merge immediately
+- **Minor** (`0.x.0`) — new feature or config option, backward compatible
+- **Major** (`x.0.0`) — breaking change; review the commit log before merging
+
+### Automatic update notifications (dev mode)
+
+During local development, a banner appears in the bottom-right corner of the page if the npm registry has a newer published version of `@cogability/membership-kit` than the version declared in `packages/membership-kit/package.json`. This serves as a signal that a `git merge template/main` may be available.
+
+The banner is color-coded by severity (Patch / Feature / BREAKING) and is silenced automatically in production builds.
+
+It is rendered by `src/KitUpdateBanner.jsx`, imported in `src/main.jsx`:
+
+```jsx
+<KitUpdateBanner installedVersion="0.2.0" />
+```
+
+To disable it, remove that line (and its import) from `src/main.jsx`.
 
 ---
 
@@ -456,16 +446,18 @@ cogbot-membership-website-template/
   src/
     main.jsx               Entry point — boots @cogability/membership-kit with your config
     index.css              Design tokens and global styles
-    assets/                Static images (hero, etc.)
+    KitUpdateBanner.jsx    Dev-mode update notification (shown when a newer kit is on npm)
+  packages/
+    membership-kit/        <- Kit source (npm workspace — symlinked into node_modules)
+      package.json         <- Kit version and dependency manifest
+      src/                 <- All components, auth, hooks, services, and pages
+      scripts/
+        check-secrets.js   <- Pre-publish secret scanner
   vite.config.js           Build config, dev proxy (CAM)
   tailwind.config.js       Tailwind config
 ```
 
-All reusable code (auth, chat, pages, components, hooks, streaming) lives in the **`@cogability/membership-kit`** npm package (`node_modules/@cogability/membership-kit`). Update it with:
-
-```bash
-npm update @cogability/membership-kit
-```
+All reusable code (auth, chat, pages, components, hooks, streaming) lives in `packages/membership-kit/src/`. It is wired into the build as an npm workspace — `node_modules/@cogability/membership-kit` is a symlink to that directory. See [Developing the Kit](#developing-the-kit) for the edit and publish workflow.
 
 ---
 
