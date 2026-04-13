@@ -32,6 +32,7 @@ export default defineConfig(({ mode }) => {
       alias: {
         '@/site.config': path.resolve(__dirname, 'site.config.js'),
       },
+      dedupe: ['react', 'react-dom', 'react-router-dom', 'oidc-client-ts'],
     },
     server: {
       port: 5174,
