@@ -6,3 +6,8 @@ dist
 *.log
 .DS_Store
 .vite
+
+# Kit package (monorepo workspace)
+# packages/membership-kit/src/ IS tracked — that is the editable source
+# node_modules inside the workspace is covered by the blanket rule above
+packages/membership-kit/node_modules

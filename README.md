@@ -478,6 +478,57 @@ npm update @cogability/membership-kit
 
 ---
 
+## Developing the Kit
+
+The `@cogability/membership-kit` source lives in `packages/membership-kit/` inside this repo. This is a standard [npm workspace](https://docs.npmjs.com/cli/using-npm/workspaces) — `npm install` automatically symlinks `node_modules/@cogability/membership-kit` to `packages/membership-kit/`, so edits to the kit source are reflected immediately without rebuilding or relinking.
+
+### Project layout
+
+```
+cogbot-membership-website-template/
+  packages/
+    membership-kit/
+      package.json          ← kit package manifest (name, version, dependencies)
+      src/                  ← editable kit source — all components, auth, hooks, services
+      scripts/
+        check-secrets.js    ← pre-publish secret scanner (runs automatically on npm publish)
+  src/                      ← template shell (main.jsx, index.css, KitUpdateBanner.jsx)
+  site.config.js            ← branding and content config (customers edit this)
+```
+
+### Development workflow
+
+1. **Edit the kit** — modify any file under `packages/membership-kit/src/`. Changes take effect immediately when you run `npm run dev` from the repo root (Vite resolves the kit through the workspace symlink).
+2. **Test with the template** — the template shell at `src/main.jsx` imports from `@cogability/membership-kit`, which resolves to your local `packages/membership-kit/src/`.
+3. **Run the dev server** from the repo root:
+   ```bash
+   npm run dev
+   ```
+
+### Publishing a new kit version
+
+1. Bump the version in `packages/membership-kit/package.json` (follow semver: patch for bug fixes, minor for new features, major for breaking changes).
+2. Update `src/main.jsx` to set the new version on `<KitUpdateBanner installedVersion="x.y.z" />`.
+3. Commit the version bump.
+4. Push a git tag in the format `kit-vX.Y.Z`:
+   ```bash
+   git tag kit-v0.3.0
+   git push origin kit-v0.3.0
+   ```
+5. GitHub Actions (`.github/workflows/publish-kit.yml`) picks up the tag and automatically publishes to npm.
+
+### What the pre-publish check does
+
+Before every `npm publish`, `scripts/check-secrets.js` scans all files in `src/` for patterns that must never appear in a published package:
+- `process.env.*` references (kit must accept config via props, not read env vars directly)
+- Hardcoded Bearer tokens or API key patterns
+- IBM Cloud API key prefixes
+- npm auth tokens or dotenv imports
+
+The publish will fail with a clear error if any are found.
+
+---
+
 ## Architecture Notes
 
 ### No backend in this repo
