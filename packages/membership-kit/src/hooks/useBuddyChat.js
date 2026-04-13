@@ -4,23 +4,28 @@ import {
   initCogbot,
   fetchGreeting,
   sendMessage as apiSendMessage,
+  sendMessageStream as apiSendMessageStream,
   parseResponseGeneric,
 } from '../services/buddyApi';
 
 /**
  * Manages the full anonymous chat lifecycle:
  *   1. Establish anonymous session (settokens)
- *   2. Initialize cogbot (greeting)
- *   3. Send/receive messages
+ *   2. Initialize cogbot (init config + greeting)
+ *   3. Send/receive messages (JSON or SSE streaming)
  *
- * Returns { messages, isLoading, isInitializing, error, sendMessage, retry }.
+ * Returns { messages, isLoading, isInitializing, error, sendMessage, retry, streamingText }.
  */
 export default function useBuddyChat() {
   const [messages, setMessages] = useState([]);
   const [isLoading, setIsLoading] = useState(false);
   const [isInitializing, setIsInitializing] = useState(true);
   const [error, setError] = useState(null);
+  const [streamingText, setStreamingText] = useState('');
   const initRef = useRef(false);
+  const streamingRef = useRef(false);
+  const abortRef = useRef(null);
+  const rafIdRef = useRef(null);
 
   const initialize = useCallback(async () => {
     try {
@@ -28,7 +33,9 @@ export default function useBuddyChat() {
       setError(null);
 
       await setAnonymousTokens();
-      await initCogbot();
+      const initData = await initCogbot();
+
+      streamingRef.current = initData?.config?.streaming === true;
 
       try {
         const greetingData = await fetchGreeting();
@@ -53,6 +60,10 @@ export default function useBuddyChat() {
     if (initRef.current) return;
     initRef.current = true;
     initialize();
+    return () => {
+      abortRef.current?.abort();
+      if (rafIdRef.current != null) cancelAnimationFrame(rafIdRef.current);
+    };
   }, [initialize]);
 
   const sendMessage = useCallback(async (text) => {
@@ -62,33 +73,96 @@ export default function useBuddyChat() {
     setMessages((prev) => [...prev, userMsg]);
     setIsLoading(true);
     setError(null);
+    setStreamingText('');
 
-    try {
-      const response = await apiSendMessage(text.trim());
-      const generics = parseResponseGeneric(response);
-      const botMessages = generics
-        .filter((g) => g.response_type === 'text' && g.text)
-        .map((g) => ({ role: 'assistant', content: g.text, id: crypto.randomUUID() }));
+    if (streamingRef.current) {
+      const controller = new AbortController();
+      abortRef.current = controller;
+      let pendingText = '';
 
-      if (botMessages.length === 0) {
-        botMessages.push({ role: 'assistant', content: "I'm sorry, I didn't get a response. Please try again.", id: crypto.randomUUID() });
+      const schedulePartialUpdate = (newText) => {
+        pendingText = newText;
+        if (rafIdRef.current == null) {
+          rafIdRef.current = requestAnimationFrame(() => {
+            rafIdRef.current = null;
+            setStreamingText(pendingText);
+          });
+        }
+      };
+
+      try {
+        await apiSendMessageStream(text.trim(), {
+          signal: controller.signal,
+          onEvent: ({ eventName, data }) => {
+            if (eventName === 'partial_object' || eventName === 'object_ready') {
+              const generics = data?.output?.generic;
+              if (Array.isArray(generics)) {
+                const textParts = generics
+                  .filter((g) => g.response_type === 'text' && g.text)
+                  .map((g) => g.text);
+                if (textParts.length > 0) {
+                  schedulePartialUpdate(textParts.join('\n\n'));
+                }
+              }
+            } else if (eventName === 'final_response') {
+              if (rafIdRef.current != null) {
+                cancelAnimationFrame(rafIdRef.current);
+                rafIdRef.current = null;
+              }
+              setStreamingText('');
+
+              const generics = parseResponseGeneric(data);
+              const botMessages = generics
+                .filter((g) => g.response_type === 'text' && g.text)
+                .map((g) => ({ role: 'assistant', content: g.text, id: crypto.randomUUID() }));
+
+              if (botMessages.length === 0) {
+                botMessages.push({ role: 'assistant', content: "I'm sorry, I didn't get a response. Please try again.", id: crypto.randomUUID() });
+              }
+              setMessages((prev) => [...prev, ...botMessages]);
+            }
+          },
+        });
+      } catch (err) {
+        if (err.name !== 'AbortError') {
+          console.error('BuddyChat: stream failed', err);
+          setError('Something went wrong sending your message.');
+        }
+      } finally {
+        setStreamingText('');
+        setIsLoading(false);
+        abortRef.current = null;
       }
+    } else {
+      try {
+        const response = await apiSendMessage(text.trim());
+        const generics = parseResponseGeneric(response);
+        const botMessages = generics
+          .filter((g) => g.response_type === 'text' && g.text)
+          .map((g) => ({ role: 'assistant', content: g.text, id: crypto.randomUUID() }));
 
-      setMessages((prev) => [...prev, ...botMessages]);
-    } catch (err) {
-      console.error('BuddyChat: message failed', err);
-      setError('Something went wrong sending your message.');
-    } finally {
-      setIsLoading(false);
+        if (botMessages.length === 0) {
+          botMessages.push({ role: 'assistant', content: "I'm sorry, I didn't get a response. Please try again.", id: crypto.randomUUID() });
+        }
+
+        setMessages((prev) => [...prev, ...botMessages]);
+      } catch (err) {
+        console.error('BuddyChat: message failed', err);
+        setError('Something went wrong sending your message.');
+      } finally {
+        setIsLoading(false);
+      }
     }
   }, [isLoading]);
 
   const retry = useCallback(() => {
+    abortRef.current?.abort();
     initRef.current = false;
     setMessages([]);
     setError(null);
+    setStreamingText('');
     initialize();
   }, [initialize]);
 
-  return { messages, isLoading, isInitializing, error, sendMessage, retry };
+  return { messages, isLoading, isInitializing, error, sendMessage, retry, streamingText };
 }

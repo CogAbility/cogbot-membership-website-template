@@ -113,17 +113,43 @@ Add the package alias for local development (if using the monorepo layout with `
 
 ```js
 import path from 'path';
+import { defineConfig, loadEnv } from 'vite';
 
-export default defineConfig({
-  resolve: {
-    alias: {
-      '@': path.resolve(__dirname, './src'),
-      '@cogbot/membership-kit': path.resolve(__dirname, 'packages/membership-kit/src'),
+export default defineConfig(({ mode }) => {
+  const env = loadEnv(mode, process.cwd(), 'VITE_');
+
+  return {
+    resolve: {
+      alias: {
+        '@': path.resolve(__dirname, './src'),
+        '@cogbot/membership-kit': path.resolve(__dirname, 'packages/membership-kit/src'),
+      },
     },
-  },
-  // ... rest of your config
+    server: {
+      port: 5174,
+      proxy: {
+        '/cogbot-api': {
+          target: env.VITE_COGBOT_HOST || 'http://localhost:8085',
+          changeOrigin: true,
+          rewrite: (p) => p.replace(/^\/cogbot-api/, ''),
+          secure: false,
+          configure: (proxy) => {
+            proxy.on('proxyRes', (proxyRes) => {
+              if ((proxyRes.headers['content-type'] || '').includes('text/event-stream')) {
+                proxyRes.headers['cache-control'] = 'no-cache';
+                proxyRes.headers['x-accel-buffering'] = 'no';
+              }
+            });
+          },
+        },
+      },
+    },
+    // ... rest of your config
+  };
 });
 ```
+
+The `/cogbot-api` proxy forwards chat API requests to the **CAM** (CogBot Access Manager) service. The `configure` callback sets SSE-specific headers to prevent response buffering during streaming. In local development, leave `VITE_COGBOT_HOST` unset in `.env` so the proxy defaults to `http://localhost:8085`.
 
 If you installed from npm (not using local packages), you can skip the `@cogbot/membership-kit` alias — Vite will resolve it from `node_modules` automatically.
 

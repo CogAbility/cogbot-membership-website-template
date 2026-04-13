@@ -16,8 +16,10 @@ export {
   setAnonymousTokens,
   initCogbot,
   sendMessage,
+  sendMessageStream,
   setAuthenticatedTokens,
   sendAuthenticatedMessage,
+  sendAuthenticatedMessageStream,
   buildOnboardingMessage,
   parseResponseGeneric,
 } from './services/buddyApi';

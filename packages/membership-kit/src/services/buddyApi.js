@@ -146,6 +146,109 @@ export async function sendMessage(text) {
   return res.json();
 }
 
+function buildMessageBody(text, userId, { anonymous = true } = {}) {
+  return {
+    input: [{ type: 'text', text }],
+    context: { global: { system: { user_id: userId } } },
+    metadata: {},
+    user_id: userId,
+    language: LANGUAGE,
+    country: COUNTRY,
+    host_url: window.location.href,
+    training: false,
+    channel: 'web',
+    anonymous,
+  };
+}
+
+function parseSseBlock(block, onEvent) {
+  let eventName = 'message';
+  const dataLines = [];
+  for (const line of block.split(/\r?\n/)) {
+    if (line.startsWith('event:')) {
+      eventName = line.slice(6).trim();
+    } else if (line.startsWith('data:')) {
+      dataLines.push(line.slice(5).replace(/^\s/, ''));
+    }
+  }
+  if (dataLines.length === 0) return;
+  try {
+    const data = JSON.parse(dataLines.join('\n'));
+    onEvent({ eventName, data });
+  } catch (e) {
+    console.error('BuddyChat: SSE JSON parse error', e);
+  }
+}
+
+/**
+ * Send a message via SSE streaming. Calls onEvent for each SSE event:
+ *   - partial_object: progressive response as LLM generates tokens
+ *   - object_ready: complete output from a finished cascade layer
+ *   - final_response: complete MessageResponse with full context
+ *
+ * @param {string} text
+ * @param {{ onEvent: (evt: { eventName: string, data: object }) => void, signal?: AbortSignal, anonymous?: boolean }} options
+ */
+export async function sendMessageStream(text, { onEvent, signal, anonymous = true } = {}) {
+  const base = getBaseUrl();
+  const userId = getUserId();
+
+  let url = `${base}/api/cogbots/${COGBOT_ID}/id/${userId}/message/stream`;
+  url = appendSidParam(url);
+  url = cacheBust(url);
+
+  const res = await fetch(url, {
+    method: 'POST',
+    headers: {
+      Authorization: 'Bearer anonymous',
+      'Content-Type': 'application/json',
+      Accept: 'text/event-stream, application/json;q=0.9',
+    },
+    body: JSON.stringify(buildMessageBody(text, userId, { anonymous })),
+    credentials: 'include',
+    signal,
+  });
+
+  if (!res.ok) throw new Error(`message stream failed: ${res.status}`);
+  if (!res.body || typeof res.body.getReader !== 'function') {
+    throw new Error('Streaming not supported in this browser');
+  }
+
+  const reader = res.body.getReader();
+  const decoder = new TextDecoder();
+  let buffer = '';
+
+  try {
+    while (true) {
+      const { done, value } = await reader.read();
+      if (done) break;
+      buffer += decoder.decode(value, { stream: true });
+      const parts = buffer.split(/\r?\n\r?\n/);
+      buffer = parts.pop() || '';
+      for (const part of parts) {
+        if (part.trim() && onEvent) {
+          parseSseBlock(part, onEvent);
+        }
+      }
+    }
+    if (buffer.trim() && onEvent) {
+      parseSseBlock(buffer, onEvent);
+    }
+  } catch (err) {
+    if (err.name === 'AbortError') return;
+    throw err;
+  }
+}
+
+/**
+ * Send a streaming message as an authenticated member.
+ * Establishes an authenticated session first, then streams.
+ */
+export async function sendAuthenticatedMessageStream(text, { idToken, onEvent, signal }) {
+  await setAuthenticatedTokens(idToken);
+  return sendMessageStream(text, { onEvent, signal, anonymous: false });
+}
+
 /**
  * Establish an authenticated session with the widget BFF using the user's
  * real idToken. Must be called before sendAuthenticatedMessage.

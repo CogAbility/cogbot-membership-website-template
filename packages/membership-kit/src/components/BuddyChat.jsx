@@ -8,14 +8,14 @@ function prepareHtml(html) {
 
 export default function BuddyChat({ height, className = '', hideHeader = false }) {
   const { hero, images, botName } = useSiteConfig();
-  const { messages, isLoading, isInitializing, error, sendMessage, retry } = useBuddyChat();
+  const { messages, isLoading, isInitializing, error, sendMessage, retry, streamingText } = useBuddyChat();
   const [input, setInput] = useState('');
   const messagesEndRef = useRef(null);
   const inputRef = useRef(null);
 
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
-  }, [messages, isLoading]);
+  }, [messages, isLoading, streamingText]);
 
   const handleSubmit = (e) => {
     e.preventDefault();
@@ -56,14 +56,22 @@ export default function BuddyChat({ height, className = '', hideHeader = false }
           <MessageBubble key={msg.id} message={msg} />
         ))}
 
-        {isLoading && (
+        {streamingText ? (
+          <div className="flex items-start gap-2.5">
+            <BuddyAvatar />
+            <div
+              className="max-w-[80%] rounded-2xl rounded-tl-sm px-4 py-2.5 text-sm leading-relaxed shadow-sm bg-white text-gray-800 border border-gray-200 [&_p]:mb-2 [&_p:last-child]:mb-0 [&_ul]:list-disc [&_ul]:pl-4 [&_ol]:list-decimal [&_ol]:pl-4 [&_a]:text-primary [&_a]:underline [&_a]:cursor-pointer [&_a]:hover:opacity-80"
+              dangerouslySetInnerHTML={{ __html: prepareHtml(streamingText) }}
+            />
+          </div>
+        ) : isLoading ? (
           <div className="flex items-start gap-2.5">
             <BuddyAvatar />
             <div className="bg-white border border-gray-200 rounded-2xl rounded-tl-sm px-4 py-2.5 shadow-sm">
               <LoadingDots />
             </div>
           </div>
-        )}
+        ) : null}
 
         {error && (
           <div className="flex flex-col items-center gap-2 py-4">

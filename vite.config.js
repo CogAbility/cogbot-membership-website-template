@@ -38,10 +38,18 @@ export default defineConfig(({ mode }) => {
       port: 5174,
       proxy: {
         '/cogbot-api': {
-          target: env.VITE_COGBOT_HOST || 'https://cogbot-widget.mc-cap1.cogability.net',
+          target: env.VITE_COGBOT_HOST || 'http://localhost:8085',
           changeOrigin: true,
           rewrite: (p) => p.replace(/^\/cogbot-api/, ''),
-          secure: true,
+          secure: false,
+          configure: (proxy) => {
+            proxy.on('proxyRes', (proxyRes) => {
+              if ((proxyRes.headers['content-type'] || '').includes('text/event-stream')) {
+                proxyRes.headers['cache-control'] = 'no-cache';
+                proxyRes.headers['x-accel-buffering'] = 'no';
+              }
+            });
+          },
         },
       },
     },

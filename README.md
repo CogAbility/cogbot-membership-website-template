@@ -16,8 +16,8 @@ Browser (React SPA)
   │
   ├─ Public landing page (/) — anonymous chat (if not geofenced)
   │     └─ BuddyChat widget — no login required
-  │           └─ Anonymous session → CogBot server
-  │                 └─ Chat works immediately (no memory persistence)
+  │           └─ Anonymous session → CAM → be-pfc (PFC2)
+  │                 └─ Chat works immediately (SSE streaming, no memory persistence)
   │
   └─ User clicks Sign In
         └─ App ID popup (OIDC) → idToken
@@ -36,7 +36,7 @@ Browser (React SPA)
                           │     └─ Allowed → auto-create member
                           │           └─ /onboarding wizard (new members)
                           │                 └─ Collects name + child info
-                          │                      └─ Authenticated message → CogBot → be-pfc
+                          │                      └─ Authenticated message → CAM → be-pfc
                           │                           └─ save_memory → Pinecone (Mem0)
                           │                                └─ get_memory injects profile into
                           │                                     system prompt on every chat
@@ -48,7 +48,7 @@ Browser (React SPA)
                           └─ Not a member → Access Denied
 ```
 
-The UI is a **static SPA** with zero backend code. All membership logic lives in CMG. Long-term memory is managed by **be-pfc** (Prefrontal Cortex backend) using Mem0 and Pinecone.
+The UI is a **static SPA** with zero backend code. All membership logic lives in CMG. Chat API routing, sessions, and streaming are handled by **CAM** (CogBot Access Manager). Long-term memory is managed by **be-pfc** (Prefrontal Cortex backend) using Mem0 and Pinecone.
 
 ---
 
@@ -66,7 +66,7 @@ Your CogAbility contact will provide a credentials sheet with these values:
 | App ID OAuth Server URL | IBM App ID endpoint for login |
 | CMG URL | Your CogBot Membership Gateway instance |
 | Site Namespace | Ties your site to the correct member roles |
-| CogBot Host URL | Your CogBot widget server |
+| CAM URL | Your CogBot Access Manager (CAM) instance — handles chat sessions and streaming |
 | CogBot ID | The specific CogBot for your site |
 
 If you don't have these yet, reach out to your CogAbility contact before starting.
@@ -236,6 +236,19 @@ Replace files in `public/`. Then update the `images:` section in `site.config.js
 
 ---
 
+## Streaming Chat
+
+The chat widget supports **SSE streaming** — responses appear progressively, token by token, as the AI generates them. This provides a faster-feeling experience compared to waiting for the complete response.
+
+Streaming is controlled by the **CAM** (CogBot Access Manager) service, not by Cloudant configuration. When CAM has `STREAM_MESSAGES=true` in its environment, it injects `config.streaming: true` into the cogbot init response. The membership kit reads this flag and automatically switches between:
+
+- **Streaming mode** (`/message/stream`) — progressive token-by-token rendering via Server-Sent Events (SSE)
+- **JSON mode** (`/message`) — complete response delivered at once
+
+No code changes are needed in the SPA to enable or disable streaming — it is entirely controlled by the CAM deployment configuration. This also means different deployments (e.g. a production widget and a membership SPA) can independently control streaming for the same cogbot.
+
+---
+
 ## Member Onboarding
 
 When a new member signs in for the first time, CMG returns `autoProvisioned: true`. The app redirects them to a three-step onboarding wizard (`/onboarding`) instead of the members page:
@@ -244,13 +257,13 @@ When a new member signs in for the first time, CMG returns `autoProvisioned: tru
 2. **Baby Info** — child's name, gender, birthday; supports multiple children via "Add another child"
 3. **All Set** — summary confirmation, then navigates to `/members`
 
-On completion the wizard fires an authenticated message to the CogBot server with the collected profile. The be-pfc agent's `save_memory` tool saves it to Pinecone. On every subsequent chat, `get_memory` retrieves the profile and injects it into the system prompt so Buddy can give personalized responses.
+On completion the wizard fires an authenticated message to CAM, which proxies it to be-pfc. The be-pfc agent's `save_memory` tool saves the profile to Pinecone. On every subsequent chat, `get_memory` retrieves the profile and injects it into the system prompt so Buddy can give personalized responses.
 
 A `localStorage` flag (`onboarded_{uid}`) is set when onboarding is completed or skipped. The members page checks this flag on mount and redirects to `/onboarding` if it is absent, ensuring that users who were removed and re-admitted also go through onboarding.
 
 ### Profile management
 
-Members can update their name and child info at any time via the **Edit Profile** option in the user account dropdown (top-right of every page). Saving sends a new authenticated message to be-pfc, which overwrites the existing Pinecone memory entry.
+Members can update their name and child info at any time via the **Edit Profile** option in the user account dropdown (top-right of every page). Saving sends a new authenticated message to be-pfc (via CAM), which overwrites the existing Pinecone memory entry.
 
 Password management via the profile page is supported for Cloud Directory (email/password) users only. Google and other social login users manage their credentials through their identity provider.
 
@@ -278,7 +291,7 @@ Copy `.env.example` to `.env` and fill in the values from your CogAbility creden
 | `VITE_APPID_OAUTH_SERVER_URL` | App ID OAuth server URL (e.g. `https://us-south.appid.cloud.ibm.com/oauth/v4/TENANT_ID`) |
 | `VITE_CMG_URL` | Base URL of your CMG instance |
 | `VITE_SITE_NAMESPACE` | Namespace for role filtering (must match Cloudant role definitions) |
-| `VITE_COGBOT_HOST` | CogBot widget server base URL (no trailing slash) |
+| `VITE_COGBOT_HOST` | CAM (CogBot Access Manager) base URL (no trailing slash). In local dev, leave unset — the Vite proxy defaults to `http://localhost:8085`. In production, set to your deployed CAM URL (e.g. `https://cam.yourplatform.com`). |
 | `VITE_COGBOT_ID` | CogBot ID for this site (e.g. `mc_0091:full`) |
 
 Never commit `.env` to git — it is listed in `.gitignore`.
@@ -298,11 +311,11 @@ Never commit `.env` to git — it is listed in `.gitignore`.
    - `VITE_APPID_OAUTH_SERVER_URL`
    - `VITE_CMG_URL`
    - `VITE_SITE_NAMESPACE`
-   - `VITE_COGBOT_HOST`
+   - `VITE_COGBOT_HOST` — your deployed CAM URL
    - `VITE_COGBOT_ID`
 4. **Deploy** — Lovable automatically builds and deploys your site. The build command is `npm run build` and the output directory is `dist`.
 5. **Copy your live URL** — once deployed, copy the URL that Lovable gives you (e.g. `https://your-project.lovable.app`).
-6. **Send your URL to CogAbility** — your CogAbility contact needs to add your production URL to the CogBot server's CORS allowlist. Chat will not work until this is done.
+6. **Send your URL to CogAbility** — your CogAbility contact needs to add your production URL to the CAM CORS allowlist. Chat will not work until this is done.
 7. **Make changes** — use Lovable's AI chat to make further branding or content changes. Ask things like "Change the hero tagline to..." or "Add a new testimonial."
 
 ### Bolt.new
@@ -322,7 +335,7 @@ Connect your GitHub repo in the platform dashboard. Configure:
 
 ### After deploying (all platforms)
 
-**CORS setup is required.** After your site is live, send your production URL to your CogAbility contact so they can add it to the CogBot server's CORS allowlist. Without this, chat requests will fail with CORS errors.
+**CORS setup is required.** After your site is live, send your production URL to your CogAbility contact so they can add it to the CAM CORS allowlist (managed in Cloudant). Without this, chat requests will fail with CORS errors.
 
 ---
 
@@ -335,7 +348,24 @@ cp .env.example .env
 npm run dev
 ```
 
-The dev server starts at `http://localhost:5174`. During development, `/cogbot-api` requests are proxied to `VITE_COGBOT_HOST`, so no CORS configuration is needed locally.
+The dev server starts at `http://localhost:5174`.
+
+### Prerequisites for chat
+
+For chat to work locally, you need the **CAM** (CogBot Access Manager) service running:
+
+1. Start CAM on its configured port (default `8085`):
+   ```bash
+   cd /path/to/cam-cogbot-access-manager
+   npm run start-dev
+   ```
+2. Leave `VITE_COGBOT_HOST` **unset** (or commented out) in your `.env`. The Vite dev server proxies `/cogbot-api` requests to `http://localhost:8085` by default.
+3. Start the membership template:
+   ```bash
+   npm run dev
+   ```
+
+The Vite proxy handles CORS automatically during local development — no CORS configuration is needed.
 
 ---
 
@@ -343,13 +373,14 @@ The dev server starts at `http://localhost:5174`. During development, `/cogbot-a
 
 | Problem | Likely cause | Fix |
 |---|---|---|
-| Chat shows a CORS error in the browser console | Your production domain isn't in the CogBot CORS allowlist | Send your live URL to your CogAbility contact |
+| Chat shows a CORS error in the browser console | Your production domain isn't in the CAM CORS allowlist | Send your live URL to your CogAbility contact |
 | Blank page after deploying | One or more `VITE_*` environment variables are missing | Check that all 6 are set in your platform's settings and redeploy |
 | Sign-in popup doesn't appear or is blocked | Browser popup blocker | Allow popups for your site's domain, or try a different browser |
 | "Access Denied" after signing in | Your email isn't in the Cloudant member whitelist | Ask your CogAbility contact to add your email, or enable auto-provisioning for your namespace |
 | Images are broken or show "Replace me" | Placeholder images haven't been replaced | Add your own images to `public/` and update `images:` paths in `site.config.js` |
 | Browser tab still shows old title | Stale build cache | Clear the build cache in your hosting platform and redeploy |
-| Login works but chat says "initializing" forever | `VITE_COGBOT_HOST` or `VITE_COGBOT_ID` is wrong | Double-check these values against your credentials sheet |
+| Chat says "initializing" forever (local dev) | CAM is not running, or `VITE_COGBOT_HOST` is set to a non-reachable URL | Start CAM (`npm run start-dev` in the CAM directory) and leave `VITE_COGBOT_HOST` unset in `.env` so the Vite proxy defaults to `localhost:8085` |
+| Chat says "initializing" forever (production) | `VITE_COGBOT_HOST` or `VITE_COGBOT_ID` is wrong | Double-check these values against your credentials sheet |
 
 ---
 
@@ -373,9 +404,9 @@ Check the [package changelog](packages/membership-kit/CHANGELOG.md) for details 
 
 During local development, the kit checks npm once per day for newer versions. If an update is available, you'll see a color-coded console message:
 
-- **🟢 Patch** — bug fix, safe to update immediately
-- **🟡 Feature** — new functionality, safe to update (no breaking changes)
-- **🔴 BREAKING** — major version bump, check the [changelog](packages/membership-kit/CHANGELOG.md) before updating
+- **Patch** — bug fix, safe to update immediately
+- **Feature** — new functionality, safe to update (no breaking changes)
+- **BREAKING** — major version bump, check the [changelog](packages/membership-kit/CHANGELOG.md) before updating
 
 This check only runs in dev mode and never in production. To disable it, remove the `checkForUpdates()` call from `src/main.jsx`.
 
@@ -400,34 +431,34 @@ Since the template only contains configuration files (no application code), merg
 
 ```
 cogbot-membership-website-template/
-  site.config.js          ← Edit this to customize branding, content, and SEO
-  .env                    ← Your service credentials (gitignored)
-  .env.example            ← Env var template (committed)
-  index.html              ← Auto-generated from site.config.js (do not edit directly)
+  site.config.js          <- Edit this to customize branding, content, and SEO
+  .env                    <- Your service credentials (gitignored)
+  .env.example            <- Env var template (committed)
+  index.html              <- Auto-generated from site.config.js (do not edit directly)
   public/
-    bot-icon.svg            ← Chat avatar icon (replace with your own)
-    org-logo.svg            ← Org logo (replace with your own)
-    favicon.svg             ← Browser tab icon
+    bot-icon.svg            <- Chat avatar icon (replace with your own)
+    org-logo.svg            <- Org logo (replace with your own)
+    favicon.svg             <- Browser tab icon
   src/
     main.jsx               Entry point — boots @cogbot/membership-kit with your config
     index.css              Design tokens and global styles
     assets/                Static images (hero, etc.)
   packages/
-    membership-kit/        ← @cogbot/membership-kit npm package (all reusable code)
+    membership-kit/        <- @cogbot/membership-kit npm package (all reusable code)
       src/
         App.jsx            Application shell with routing and providers
         index.js           Public API surface (all exports)
         config/            SiteConfigContext (React Context for config injection)
         auth/              AuthProvider, ProtectedRoute, RoleGate, userManager
-        services/          buddyApi (CogBot HTTP client)
-        hooks/             useBuddyChat (chat state)
+        services/          buddyApi (CogBot HTTP client + SSE streaming)
+        hooks/             useBuddyChat (chat state + streaming text)
         components/        Header, Footer, Hero, Features, About, Testimonials,
                            BuddyChat, CogBotEmbed, ProfileFormFields, etc.
         pages/             LandingPage, MembersPage, OnboardingPage, ProfilePage,
                            LoginPage, AccessDenied, CallbackPage
       scripts/
         check-secrets.js   Pre-publish secret scanner
-  vite.config.js           Build config, dev proxy, package alias
+  vite.config.js           Build config, dev proxy (CAM), package alias
   tailwind.config.js       Tailwind config (scans both src/ and packages/)
 ```
 
@@ -454,14 +485,14 @@ This is a pure static SPA. All server-side logic lives in external services:
 | **App ID** | Authentication — issues JWTs, supports email/password and social login (Google, etc.) |
 | **CMG** | Membership validation — verifies JWTs, checks Cloudant, returns roles and `autoProvisioned` flag |
 | **Cloudant** | Source of truth for whitelist entries and role definitions |
-| **CogBot server** | Widget BFF — session management, routes messages to be-pfc |
+| **CAM** | CogBot Access Manager — session management, auth header injection, SSE streaming relay, routes messages to be-pfc. Each CAM instance independently controls streaming via `STREAM_MESSAGES`. |
 | **be-pfc** | AI cascade (LangGraph), long-term memory via Mem0 + Pinecone |
 
 ### CORS
 
-During local development, `/cogbot-api` requests are proxied through the Vite dev server to `VITE_COGBOT_HOST`, so no CORS configuration is needed locally.
+During local development, `/cogbot-api` requests are proxied through the Vite dev server to CAM (defaulting to `http://localhost:8085`), so no CORS configuration is needed locally.
 
-For production (platform hosting), the CogBot server must allow your deployed domain in its CORS settings. After deploying, send your production URL to your CogAbility contact and they will configure this for you.
+For production (platform hosting), CAM must allow your deployed domain in its CORS allowlist. After deploying, send your production URL to your CogAbility contact and they will add it to the Cloudant CORS allowlist document used by CAM.
 
 ### Geofencing
 
