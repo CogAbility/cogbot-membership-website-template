@@ -1,29 +1,27 @@
-import { UserManager } from 'oidc-client-ts';
+/**
+ * getUserManager — backward-compatible export for code that accesses the
+ * underlying oidc-client-ts UserManager directly.
+ *
+ * AuthProvider now manages OIDC via @cogability/sdk AuthClient, so this module
+ * delegates to AuthClient and exposes its internal UserManager instance.
+ * Prefer using useAuth() / AuthProvider in React code.
+ */
+
+import { createAuthClientFromEnv } from '@cogability/sdk';
 
 const CMG_URL = import.meta.env.VITE_CMG_URL || 'http://localhost:3010';
 
-let manager;
+let _authClient;
 
-export function getUserManager() {
-  if (!manager) {
-    const authority = import.meta.env.VITE_APPID_OAUTH_SERVER_URL;
+function getAuthClient() {
+  if (!_authClient) _authClient = createAuthClientFromEnv(CMG_URL);
+  return _authClient;
+}
 
-    manager = new UserManager({
-      authority,
-      client_id: import.meta.env.VITE_APPID_CLIENT_ID,
-      redirect_uri: `${window.location.origin}/callback`,
-      response_type: 'code',
-      scope: 'openid profile email',
-      // App ID's token endpoint doesn't support CORS from browser origins,
-      // so we proxy the token exchange through CMG (server-to-server).
-      metadata: {
-        issuer: authority,
-        authorization_endpoint: `${authority}/authorization`,
-        token_endpoint: `${CMG_URL}/auth/token`,
-        userinfo_endpoint: `${authority}/userinfo`,
-        jwks_uri: `${authority}/publickeys`,
-      },
-    });
-  }
-  return manager;
+/**
+ * Returns the oidc-client-ts UserManager configured for this site.
+ * @returns {Promise<import('oidc-client-ts').UserManager>}
+ */
+export async function getUserManager() {
+  return getAuthClient()._getManager();
 }

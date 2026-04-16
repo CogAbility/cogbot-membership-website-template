@@ -1,12 +1,6 @@
 import { useState, useCallback, useRef, useEffect } from 'react';
-import {
-  setAnonymousTokens,
-  initCogbot,
-  fetchGreeting,
-  sendMessage as apiSendMessage,
-  sendMessageStream as apiSendMessageStream,
-  parseResponseGeneric,
-} from '../services/buddyApi';
+import { cam } from '../services/buddyApi';
+import { CamClient } from '@cogability/sdk';
 
 /**
  * Manages the full anonymous chat lifecycle:
@@ -32,19 +26,16 @@ export default function useBuddyChat() {
       setIsInitializing(true);
       setError(null);
 
-      await setAnonymousTokens();
-      const initData = await initCogbot();
-
+      await cam.initAnonymous();
+      const initData = await cam.initCogbot();
       streamingRef.current = initData?.config?.streaming === true;
 
       try {
-        const greetingData = await fetchGreeting();
+        const greetingData = await cam.fetchGreeting();
         const greetings = (greetingData.output || [])
           .filter((g) => g.response_type === 'text' && g.text)
           .map((g) => ({ role: 'assistant', content: g.text, id: crypto.randomUUID() }));
-        if (greetings.length > 0) {
-          setMessages(greetings);
-        }
+        if (greetings.length > 0) setMessages(greetings);
       } catch (greetErr) {
         console.warn('BuddyChat: greeting fetch failed, chat still usable', greetErr);
       }
@@ -91,38 +82,39 @@ export default function useBuddyChat() {
       };
 
       try {
-        await apiSendMessageStream(text.trim(), {
+        for await (const { eventName, data } of cam.streamMessage(text.trim(), {
           signal: controller.signal,
-          onEvent: ({ eventName, data }) => {
-            if (eventName === 'partial_object' || eventName === 'object_ready') {
-              const generics = data?.output?.generic;
-              if (Array.isArray(generics)) {
-                const textParts = generics
-                  .filter((g) => g.response_type === 'text' && g.text)
-                  .map((g) => g.text);
-                if (textParts.length > 0) {
-                  schedulePartialUpdate(textParts.join('\n\n'));
-                }
-              }
-            } else if (eventName === 'final_response') {
-              if (rafIdRef.current != null) {
-                cancelAnimationFrame(rafIdRef.current);
-                rafIdRef.current = null;
-              }
-              setStreamingText('');
-
-              const generics = parseResponseGeneric(data);
-              const botMessages = generics
+        })) {
+          if (eventName === 'partial_object' || eventName === 'object_ready') {
+            const generics = data?.output?.generic;
+            if (Array.isArray(generics)) {
+              const textParts = generics
                 .filter((g) => g.response_type === 'text' && g.text)
-                .map((g) => ({ role: 'assistant', content: g.text, id: crypto.randomUUID() }));
-
-              if (botMessages.length === 0) {
-                botMessages.push({ role: 'assistant', content: "I'm sorry, I didn't get a response. Please try again.", id: crypto.randomUUID() });
-              }
-              setMessages((prev) => [...prev, ...botMessages]);
+                .map((g) => g.text);
+              if (textParts.length > 0) schedulePartialUpdate(textParts.join('\n\n'));
             }
-          },
-        });
+          } else if (eventName === 'final_response') {
+            if (rafIdRef.current != null) {
+              cancelAnimationFrame(rafIdRef.current);
+              rafIdRef.current = null;
+            }
+            setStreamingText('');
+
+            const generics = CamClient.parseResponseGeneric(data);
+            const botMessages = generics
+              .filter((g) => g.response_type === 'text' && g.text)
+              .map((g) => ({ role: 'assistant', content: g.text, id: crypto.randomUUID() }));
+
+            if (botMessages.length === 0) {
+              botMessages.push({
+                role: 'assistant',
+                content: "I'm sorry, I didn't get a response. Please try again.",
+                id: crypto.randomUUID(),
+              });
+            }
+            setMessages((prev) => [...prev, ...botMessages]);
+          }
+        }
       } catch (err) {
         if (err.name !== 'AbortError') {
           console.error('BuddyChat: stream failed', err);
@@ -135,16 +127,19 @@ export default function useBuddyChat() {
       }
     } else {
       try {
-        const response = await apiSendMessage(text.trim());
-        const generics = parseResponseGeneric(response);
+        const response = await cam.sendMessage(text.trim());
+        const generics = CamClient.parseResponseGeneric(response);
         const botMessages = generics
           .filter((g) => g.response_type === 'text' && g.text)
           .map((g) => ({ role: 'assistant', content: g.text, id: crypto.randomUUID() }));
 
         if (botMessages.length === 0) {
-          botMessages.push({ role: 'assistant', content: "I'm sorry, I didn't get a response. Please try again.", id: crypto.randomUUID() });
+          botMessages.push({
+            role: 'assistant',
+            content: "I'm sorry, I didn't get a response. Please try again.",
+            id: crypto.randomUUID(),
+          });
         }
-
         setMessages((prev) => [...prev, ...botMessages]);
       } catch (err) {
         console.error('BuddyChat: message failed', err);

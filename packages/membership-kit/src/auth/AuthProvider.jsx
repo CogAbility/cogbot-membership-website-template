@@ -1,5 +1,5 @@
-import { createContext, useContext, useState, useCallback, useEffect } from 'react';
-import { getUserManager } from './userManager';
+import { createContext, useContext, useState, useCallback, useEffect, useMemo } from 'react';
+import { CmgClient, createAuthClientFromEnv } from '@cogability/sdk';
 
 /**
  * AuthContext provides:
@@ -15,8 +15,9 @@ import { getUserManager } from './userManager';
  *   isLoading             - boolean (true during login/logout)
  *   error                 - string | null
  *   login(returnTo)       - redirects to App ID for authentication
- *   handleCallback()      - processes the redirect callback, returns true on success
+ *   handleCallback()      - processes the redirect callback, returns { success, autoProvisioned }
  *   logout()              - clears session
+ *   cmg                   - CmgClient instance (available to child hooks via useAuth())
  */
 const AuthContext = createContext(null);
 
@@ -35,46 +36,34 @@ export function AuthProvider({ children }) {
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState(null);
 
+  // Stable SDK client instances — created once, never recreated.
+  const cmg = useMemo(() => new CmgClient({ host: CMG_URL, namespace: SITE_NAMESPACE }), []);
+  const auth = useMemo(() => createAuthClientFromEnv(CMG_URL), []);
+
   // Anonymous geofence probe — runs once on mount before any login flow.
   // Lets the landing page gate the public chat widget for non-allowed regions.
   useEffect(() => {
-    async function checkAnonymousGeofence() {
-      try {
-        const res = await fetch(
-          `${CMG_URL}/auth/geofence/check?namespace=${encodeURIComponent(SITE_NAMESPACE)}`
-        );
-        if (!res.ok) return;
-        const data = await res.json();
-        if (data.geofenced) {
-          setGeofenced(true);
-          setGeofenceMessage(data.message || null);
-        }
-      } catch {
-        // Non-fatal — if the check fails, allow access (fail open)
-      } finally {
-        setGeofenceChecking(false);
+    cmg.checkGeofence().then(({ geofenced: g, message }) => {
+      if (g) {
+        setGeofenced(true);
+        setGeofenceMessage(message);
       }
-    }
-    checkAnonymousGeofence();
-  }, []);
+    }).finally(() => {
+      setGeofenceChecking(false);
+    });
+  }, [cmg]);
 
   const validateMembership = useCallback(async (idToken) => {
     setMembershipStatus('checking');
     try {
-      const res = await fetch(`${CMG_URL}/auth/validate`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ idToken, namespace: SITE_NAMESPACE }),
-      });
-      if (!res.ok) throw new Error(`CMG responded ${res.status}`);
-      const data = await res.json();
-      setIsMember(data.isMember === true);
-      setAutoProvisioned(data.autoProvisioned === true);
-      setRoles(data.roles || []);
-      setGeofenced(data.geofenced === true);
-      setGeofenceMessage(data.geofenceMessage || null);
-      setMembershipStatus(data.isMember ? 'member' : 'not_member');
-      return data.autoProvisioned === true;
+      const result = await cmg.validateMembership(idToken);
+      setIsMember(result.isMember);
+      setAutoProvisioned(result.autoProvisioned);
+      setRoles(result.roles);
+      setGeofenced(result.geofenced);
+      setGeofenceMessage(result.geofenceMessage);
+      setMembershipStatus(result.isMember ? 'member' : 'not_member');
+      return result.autoProvisioned;
     } catch (err) {
       console.error('AuthProvider: membership validation error', err);
       setIsMember(false);
@@ -85,36 +74,26 @@ export function AuthProvider({ children }) {
       setMembershipStatus('error');
       return false;
     }
-  }, []);
+  }, [cmg]);
 
   const login = useCallback(async (returnTo = '/members') => {
-    sessionStorage.setItem('auth_return_to', returnTo);
-    await getUserManager().signinRedirect();
-  }, []);
+    await auth.login(returnTo);
+  }, [auth]);
 
   const handleCallback = useCallback(async () => {
     setIsLoading(true);
     setError(null);
     try {
       console.log('handleCallback: starting signinRedirectCallback');
-      const oidcUser = await getUserManager().signinRedirectCallback();
-      console.log('handleCallback: got user', oidcUser?.profile?.email);
+      const { user: oidcUser, idToken, accessToken } = await auth.handleCallback();
+      console.log('handleCallback: got user', oidcUser.email);
 
-      sessionStorage.setItem('cam_token', oidcUser.id_token);
-      sessionStorage.setItem('cam_access_token', oidcUser.access_token);
+      sessionStorage.setItem('cam_token', idToken);
+      sessionStorage.setItem('cam_access_token', accessToken);
 
-      const p = oidcUser.profile;
-      setUser({
-        uid: p.sub,
-        email: p.email || '',
-        firstName: p.given_name || p.name?.split(' ')[0] || '',
-        lastName: p.family_name || p.name?.split(' ').slice(1).join(' ') || '',
-        idToken: oidcUser.id_token,
-        accessToken: oidcUser.access_token,
-        raw: p,
-      });
+      setUser(oidcUser);
 
-      const wasAutoProvisioned = await validateMembership(oidcUser.id_token);
+      const wasAutoProvisioned = await validateMembership(idToken);
       return { success: true, autoProvisioned: wasAutoProvisioned };
     } catch (err) {
       console.error('AuthProvider: callback error', err);
@@ -123,12 +102,13 @@ export function AuthProvider({ children }) {
     } finally {
       setIsLoading(false);
     }
-  }, [validateMembership]);
+  }, [auth, validateMembership]);
 
-  const logout = useCallback(() => {
+  const logout = useCallback(async () => {
     sessionStorage.removeItem('cam_token');
     sessionStorage.removeItem('cam_access_token');
     sessionStorage.removeItem('auth_return_to');
+    await auth.logout();
     setUser(null);
     setIsMember(false);
     setAutoProvisioned(false);
@@ -137,7 +117,7 @@ export function AuthProvider({ children }) {
     setGeofenceMessage(null);
     setMembershipStatus('none');
     setError(null);
-  }, []);
+  }, [auth]);
 
   return (
     <AuthContext.Provider value={{
@@ -155,6 +135,7 @@ export function AuthProvider({ children }) {
       login,
       handleCallback,
       logout,
+      cmg,
     }}>
       {children}
     </AuthContext.Provider>
