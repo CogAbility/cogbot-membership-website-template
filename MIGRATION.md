@@ -4,7 +4,7 @@ This guide covers migrating from the monolithic template (all code in `src/`) to
 
 ## Who needs to migrate?
 
-If you created your site **before** the `@cogability/membership-kit` extraction, your project has application code directly in `src/`. This guide walks you through switching to the package-based architecture so you can receive updates via `npm update` instead of git merges.
+If you created your site **before** the `@cogability/membership-kit` extraction, your project has application code directly in `src/`. This guide walks you through switching to the package-based architecture so you can continue to receive updates via `git merge template/main`, with your customizations isolated to `site.config.js`, `public/`, and `src/index.css`.
 
 If you created your site **after** the extraction, you're already on the new architecture — no migration needed.
 
@@ -17,6 +17,7 @@ If you created your site **after** the extraction, you're already on the new arc
 | Components import config with `import config from '@/site.config'` | Components use `useSiteConfig()` React hook |
 | Hardcoded English strings scattered across components | All user-facing strings centralized in `site.config.js` |
 | No page override mechanism | Pages are overridable via the `overrides` prop on `<App>` |
+| HTTP calls to CAM/CMG scattered inline across components | All HTTP client code extracted into `@cogability/sdk` (`packages/sdk/`) — `CamClient`, `CmgClient`, `AuthClient` — usable independently in Vue, vanilla JS, or Node.js |
 
 ## Step-by-step migration
 
@@ -107,7 +108,7 @@ rm -rf src/pages/
 rm -f src/App.jsx
 ```
 
-After this, `src/` should contain only `main.jsx`, `index.css`, and `assets/`.
+After this, `src/` should contain only `main.jsx`, `index.css`, `KitUpdateBanner.jsx`, and `assets/`. Chat and auth HTTP logic that previously lived in `src/services/` and `src/auth/` now lives in `@cogability/sdk` (consumed by the kit internally).
 
 ### 5. Update `vite.config.js`
 

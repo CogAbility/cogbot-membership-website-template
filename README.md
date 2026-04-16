@@ -2,7 +2,7 @@
 
 A membership-gated website template powered by CogBot chat and IBM App ID authentication. Use this template to create a branded membership site for your organization — customize it by editing one config file.
 
-All reusable UI components, authentication, and CogBot integration live in the **`@cogability/membership-kit`** package — its source is at `packages/membership-kit/` in this repo and is published to npm as [`@cogability/membership-kit`](https://www.npmjs.com/package/@cogability/membership-kit). The template shell is a thin wrapper on top: a config file, styles, static assets, and a `main.jsx` that boots the kit.
+All reusable UI components, authentication, and CogBot integration live in the **`@cogability/membership-kit`** package — its source is at `packages/membership-kit/` in this repo and is published to npm as [`@cogability/membership-kit`](https://www.npmjs.com/package/@cogability/membership-kit). The kit is built on **`@cogability/sdk`** (`packages/sdk/`), a framework-agnostic client library that wraps the CAM and CMG HTTP APIs — the same SDK can be used independently in Vue apps, vanilla JS, or Node.js agents. The template shell is a thin wrapper on top of the kit: a config file, styles, static assets, and a `main.jsx` that boots the kit.
 
 ## How It Works
 
@@ -356,17 +356,22 @@ npm run dev
 
 The dev server starts at `http://localhost:5174`.
 
-### Prerequisites for chat
+### Prerequisites
 
-For chat to work locally, you need the **CAM** (CogBot Access Manager) service running:
+The full local stack requires two backend services in addition to the SPA dev server:
 
-1. Start CAM on its configured port (default `8085`):
+1. Start **CMG** (`cmg-cogbot-membership-gateway`) — handles sign-in and membership validation. Defaults to port `3010`, which matches `VITE_CMG_URL` in `.env`:
+   ```bash
+   cd /path/to/cmg-cogbot-membership-gateway
+   npm run dev
+   ```
+2. Start **CAM** (`cam-cogbot-access-manager`) — handles chat sessions and SSE streaming. Defaults to port `8085`:
    ```bash
    cd /path/to/cam-cogbot-access-manager
    npm run start-dev
    ```
-2. Leave `VITE_COGBOT_HOST` **unset** (or commented out) in your `.env`. The Vite dev server proxies `/cogbot-api` requests to `http://localhost:8085` by default.
-3. Start the membership template:
+3. Leave `VITE_COGBOT_HOST` **unset** (or commented out) in your `.env`. The Vite dev server proxies `/cogbot-api` requests to `http://localhost:8085` by default.
+4. Start the membership template:
    ```bash
    npm run dev
    ```
@@ -385,6 +390,7 @@ The Vite proxy handles CORS automatically during local development — no CORS c
 | "Access Denied" after signing in | Your email isn't in the Cloudant member whitelist | Ask your CogAbility contact to add your email, or enable auto-provisioning for your namespace |
 | Images are broken or show "Replace me" | Placeholder images haven't been replaced | Add your own images to `public/` and update `images:` paths in `site.config.js` |
 | Browser tab still shows old title | Stale build cache | Clear the build cache in your hosting platform and redeploy |
+| Sign-in completes but user lands on Access Denied unexpectedly | CMG is not running | Start CMG (`npm run dev` in the `cmg-cogbot-membership-gateway` directory) |
 | Chat says "initializing" forever (local dev) | CAM is not running, or `VITE_COGBOT_HOST` is set to a non-reachable URL | Start CAM (`npm run start-dev` in the CAM directory) and leave `VITE_COGBOT_HOST` unset in `.env` so the Vite proxy defaults to `localhost:8085` |
 | Chat says "initializing" forever (production) | `VITE_COGBOT_HOST` or `VITE_COGBOT_ID` is wrong | Double-check these values against your credentials sheet |
 
@@ -438,7 +444,7 @@ cogbot-membership-website-template/
   site.config.js          <- Edit this to customize branding, content, and SEO
   .env                    <- Your service credentials (gitignored)
   .env.example            <- Env var template (committed)
-  index.html              <- Auto-generated from site.config.js (do not edit directly)
+  index.html              <- HTML shell; Vite replaces placeholder tokens with values from site.config.js at build time
   public/
     bot-icon.svg            <- Chat avatar icon (replace with your own)
     org-logo.svg            <- Org logo (replace with your own)
@@ -453,11 +459,19 @@ cogbot-membership-website-template/
       src/                 <- All components, auth, hooks, services, and pages
       scripts/
         check-secrets.js   <- Pre-publish secret scanner
+    sdk/                   <- @cogability/sdk — framework-agnostic CAM/CMG client
+      package.json
+      src/
+        cam-client.js      <- CamClient (chat sessions, streaming)
+        cmg-client.js      <- CmgClient (membership, geofencing)
+        auth-client.js     <- AuthClient (OIDC / App ID)
+        sse-parser.js      <- SSE stream parser
+        session-store.js   <- BrowserSessionStore / MemorySessionStore
   vite.config.js           Build config, dev proxy (CAM)
   tailwind.config.js       Tailwind config
 ```
 
-All reusable code (auth, chat, pages, components, hooks, streaming) lives in `packages/membership-kit/src/`. It is wired into the build as an npm workspace — `node_modules/@cogability/membership-kit` is a symlink to that directory. See [Developing the Kit](#developing-the-kit) for the edit and publish workflow.
+All reusable code (auth, chat, pages, components, hooks, streaming) lives in `packages/membership-kit/src/`. The kit depends on `packages/sdk/` (`@cogability/sdk`) for all HTTP communication with CAM and CMG — the SDK has no React dependency and can be used independently in any JavaScript environment. Both packages are wired into the build as npm workspaces — each is symlinked into `node_modules/`. See [Developing the Kit](#developing-the-kit) for the edit and publish workflow, and [`packages/sdk/README.md`](packages/sdk/README.md) for SDK usage examples (Vue, vanilla JS, Node.js agents).
 
 ---
 
@@ -484,6 +498,10 @@ cogbot-membership-website-template/
       src/                  ← editable kit source — all components, auth, hooks, services
       scripts/
         check-secrets.js    ← pre-publish secret scanner (runs automatically on npm publish)
+    sdk/
+      package.json          ← SDK package manifest (@cogability/sdk)
+      src/                  ← CamClient, CmgClient, AuthClient, SSE parser, session stores
+      README.md             ← usage examples for Vue, vanilla JS, and Node.js agents
   src/                      ← template shell (main.jsx, index.css, KitUpdateBanner.jsx)
   site.config.js            ← branding and content config (customers edit this)
 ```
@@ -511,7 +529,7 @@ cogbot-membership-website-template/
 
 ### What the pre-publish check does
 
-Before every `npm publish`, `scripts/check-secrets.js` scans all files in `src/` for patterns that must never appear in a published package:
+Before every `npm publish`, `packages/membership-kit/scripts/check-secrets.js` scans all files in `packages/membership-kit/src/` for patterns that must never appear in a published package:
 - `process.env.*` references (kit must accept config via props, not read env vars directly)
 - Hardcoded Bearer tokens or API key patterns
 - IBM Cloud API key prefixes
@@ -530,6 +548,7 @@ This is a pure static SPA. All server-side logic lives in external services:
 | Layer | Responsibility |
 |---|---|
 | **This UI** | Login UX, onboarding wizard, profile management, page layout, route gating |
+| **`@cogability/sdk`** | Framework-agnostic HTTP client layer — `CamClient` (chat/sessions), `CmgClient` (membership/geofencing), `AuthClient` (OIDC). Used by the kit internally; also importable directly in Vue, vanilla JS, or Node.js agents. See [`packages/sdk/README.md`](packages/sdk/README.md). |
 | **App ID** | Authentication — issues JWTs, supports email/password and social login (Google, etc.) |
 | **CMG** | Membership validation — verifies JWTs, checks Cloudant, returns roles and `autoProvisioned` flag |
 | **Cloudant** | Source of truth for whitelist entries and role definitions |
