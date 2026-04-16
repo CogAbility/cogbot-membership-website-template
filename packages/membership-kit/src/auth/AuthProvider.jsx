@@ -84,9 +84,7 @@ export function AuthProvider({ children }) {
     setIsLoading(true);
     setError(null);
     try {
-      console.log('handleCallback: starting signinRedirectCallback');
       const { user: oidcUser, idToken, accessToken } = await auth.handleCallback();
-      console.log('handleCallback: got user', oidcUser.email);
 
       sessionStorage.setItem('cam_token', idToken);
       sessionStorage.setItem('cam_access_token', accessToken);

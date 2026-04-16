@@ -9,8 +9,6 @@ export { AuthProvider, useAuth } from './auth/AuthProvider';
 export { default as ProtectedRoute } from './auth/ProtectedRoute';
 export { default as RoleGate } from './auth/RoleGate';
 export { useAuthorization } from './auth/useAuthorization';
-export { getUserManager } from './auth/userManager';
-
 // Buddy API
 export {
   setAnonymousTokens,
@@ -47,6 +45,3 @@ export { default as MembersPage } from './pages/MembersPage';
 export { default as CallbackPage } from './pages/CallbackPage';
 export { default as OnboardingPage } from './pages/OnboardingPage';
 export { default as ProfilePage } from './pages/ProfilePage';
-
-// Utilities
-export { checkForUpdates } from './utils/checkForUpdates';

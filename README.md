@@ -396,47 +396,6 @@ The Vite proxy handles CORS automatically during local development — no CORS c
 
 ---
 
-## Updating the Kit
-
-The kit source lives at `packages/membership-kit/src/` inside this repo. When CogAbility releases an update — bug fixes, new features, or component changes — they are committed to this repo. To pull updates into your own site, use the template remote:
-
-```bash
-# One-time setup: add the template as a remote
-git remote add template https://github.com/CogAbility/cogbot-membership-website-template.git
-
-# Pull updates (kit and template shell together)
-git fetch template
-git merge template/main --allow-unrelated-histories
-```
-
-This brings in both kit source changes (under `packages/membership-kit/src/`) and any template shell changes (build configs, `site.config.js` schema additions, etc.) in a single merge.
-
-Merges are typically clean because your customizations live only in `site.config.js`, `public/`, and `src/index.css` — files that CogAbility does not touch.
-
-### What changes in each release
-
-Kit releases follow semantic versioning:
-
-- **Patch** (`0.2.x`) — bug fix, safe to merge immediately
-- **Minor** (`0.x.0`) — new feature or config option, backward compatible
-- **Major** (`x.0.0`) — breaking change; review the commit log before merging
-
-### Automatic update notifications (dev mode)
-
-During local development, a banner appears in the bottom-right corner of the page if the npm registry has a newer published version of `@cogability/membership-kit` than the version declared in `packages/membership-kit/package.json`. This serves as a signal that a `git merge template/main` may be available.
-
-The banner is color-coded by severity (Patch / Feature / BREAKING) and is silenced automatically in production builds.
-
-It is rendered by `src/KitUpdateBanner.jsx`, imported in `src/main.jsx`:
-
-```jsx
-<KitUpdateBanner installedVersion="0.2.0" />
-```
-
-To disable it, remove that line (and its import) from `src/main.jsx`.
-
----
-
 ## Project Structure
 
 ```
@@ -452,13 +411,10 @@ cogbot-membership-website-template/
   src/
     main.jsx               Entry point — boots @cogability/membership-kit with your config
     index.css              Design tokens and global styles
-    KitUpdateBanner.jsx    Dev-mode update notification (shown when a newer kit is on npm)
   packages/
     membership-kit/        <- Kit source (npm workspace — symlinked into node_modules)
       package.json         <- Kit version and dependency manifest
       src/                 <- All components, auth, hooks, services, and pages
-      scripts/
-        check-secrets.js   <- Pre-publish secret scanner
     sdk/                   <- @cogability/sdk — framework-agnostic CAM/CMG client
       package.json
       src/
@@ -471,7 +427,7 @@ cogbot-membership-website-template/
   tailwind.config.js       Tailwind config
 ```
 
-All reusable code (auth, chat, pages, components, hooks, streaming) lives in `packages/membership-kit/src/`. The kit depends on `packages/sdk/` (`@cogability/sdk`) for all HTTP communication with CAM and CMG — the SDK has no React dependency and can be used independently in any JavaScript environment. Both packages are wired into the build as npm workspaces — each is symlinked into `node_modules/`. See [Developing the Kit](#developing-the-kit) for the edit and publish workflow, and [`packages/sdk/README.md`](packages/sdk/README.md) for SDK usage examples (Vue, vanilla JS, Node.js agents).
+All reusable code (auth, chat, pages, components, hooks, streaming) lives in `packages/membership-kit/src/`. The kit depends on `packages/sdk/` (`@cogability/sdk`) for all HTTP communication with CAM and CMG — the SDK has no React dependency and can be used independently in any JavaScript environment. Both packages are wired into the build as npm workspaces — each is symlinked into `node_modules/`. See [`packages/sdk/README.md`](packages/sdk/README.md) for SDK usage examples (Vue, vanilla JS, Node.js agents).
 
 ---
 
@@ -481,61 +437,6 @@ All reusable code (auth, chat, pages, components, hooks, streaming) lives in `pa
 - **Tailwind CSS v3** — styling
 - **React Router v7** — client-side routing
 - **oidc-client-ts** — IBM App ID OIDC browser SDK
-
----
-
-## Developing the Kit
-
-The `@cogability/membership-kit` source lives in `packages/membership-kit/` inside this repo. This is a standard [npm workspace](https://docs.npmjs.com/cli/using-npm/workspaces) — `npm install` automatically symlinks `node_modules/@cogability/membership-kit` to `packages/membership-kit/`, so edits to the kit source are reflected immediately without rebuilding or relinking.
-
-### Project layout
-
-```
-cogbot-membership-website-template/
-  packages/
-    membership-kit/
-      package.json          ← kit package manifest (name, version, dependencies)
-      src/                  ← editable kit source — all components, auth, hooks, services
-      scripts/
-        check-secrets.js    ← pre-publish secret scanner (runs automatically on npm publish)
-    sdk/
-      package.json          ← SDK package manifest (@cogability/sdk)
-      src/                  ← CamClient, CmgClient, AuthClient, SSE parser, session stores
-      README.md             ← usage examples for Vue, vanilla JS, and Node.js agents
-  src/                      ← template shell (main.jsx, index.css, KitUpdateBanner.jsx)
-  site.config.js            ← branding and content config (customers edit this)
-```
-
-### Development workflow
-
-1. **Edit the kit** — modify any file under `packages/membership-kit/src/`. Changes take effect immediately when you run `npm run dev` from the repo root (Vite resolves the kit through the workspace symlink).
-2. **Test with the template** — the template shell at `src/main.jsx` imports from `@cogability/membership-kit`, which resolves to your local `packages/membership-kit/src/`.
-3. **Run the dev server** from the repo root:
-   ```bash
-   npm run dev
-   ```
-
-### Publishing a new kit version
-
-1. Bump the version in `packages/membership-kit/package.json` (follow semver: patch for bug fixes, minor for new features, major for breaking changes).
-2. Update `src/main.jsx` to set the new version on `<KitUpdateBanner installedVersion="x.y.z" />`.
-3. Commit the version bump.
-4. Push a git tag in the format `kit-vX.Y.Z`:
-   ```bash
-   git tag kit-v0.3.0
-   git push origin kit-v0.3.0
-   ```
-5. GitHub Actions (`.github/workflows/publish-kit.yml`) picks up the tag and automatically publishes to npm.
-
-### What the pre-publish check does
-
-Before every `npm publish`, `packages/membership-kit/scripts/check-secrets.js` scans all files in `packages/membership-kit/src/` for patterns that must never appear in a published package:
-- `process.env.*` references (kit must accept config via props, not read env vars directly)
-- Hardcoded Bearer tokens or API key patterns
-- IBM Cloud API key prefixes
-- npm auth tokens or dotenv imports
-
-The publish will fail with a clear error if any are found.
 
 ---
 

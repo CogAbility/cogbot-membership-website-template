@@ -1,9 +1,6 @@
 /**
  * buddyApi — thin module adapter over @cogability/sdk CamClient.
- *
- * Preserves the original function-based export API so that any external code
- * importing from @cogability/membership-kit continues to work unchanged.
- * All real logic now lives in CamClient.
+ * All real logic lives in CamClient.
  */
 
 import { CamClient, BrowserSessionStore } from '@cogability/sdk';
