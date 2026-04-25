@@ -2,7 +2,6 @@ import { useState, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../auth/AuthProvider';
 import { useSiteConfig } from '../config/SiteConfigContext';
-import { sendAuthenticatedMessage, buildOnboardingMessage } from '../services/buddyApi';
 import OnboardingProgressIndicator from '../components/OnboardingProgressIndicator';
 import { emptyChild, FormField, fieldClass, ChildForm } from '../components/ProfileFormFields';
 
@@ -235,7 +234,7 @@ function StepActions({ onNext, onBack, onSkip, showBack = true }) {
 
 export default function OnboardingPage() {
   const { onboarding: c } = useSiteConfig();
-  const { user } = useAuth();
+  const { user, cmg } = useAuth();
   const navigate = useNavigate();
 
   const steps = [c.step1Label, c.step2Label, c.step3Label];
@@ -272,8 +271,10 @@ export default function OnboardingPage() {
     setIsSaving(true);
     setSaveError(null);
     try {
-      const message = buildOnboardingMessage(parentData, childrenData);
-      await sendAuthenticatedMessage(message, { idToken: user?.idToken });
+      await cmg.saveProfile(user?.idToken, {
+        parent: parentData,
+        children: childrenData,
+      });
     } catch (err) {
       console.error('Onboarding: failed to save profile', err);
       setSaveError(c.profileSaveErrorWarning || 'We had trouble saving your profile, but you can still chat.');

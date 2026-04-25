@@ -36,19 +36,21 @@ Browser (React SPA)
                           │     └─ Allowed → auto-create member
                           │           └─ /onboarding wizard (new members)
                           │                 └─ Collects name + child info
-                          │                      └─ Authenticated message → CAM → be-pfc
-                          │                           └─ save_memory → Pinecone (Mem0)
-                          │                                └─ get_memory injects profile into
-                          │                                     system prompt on every chat
+                          │                      └─ cmgClient.saveProfile → CMG
+                          │                           └─ Cloudant users.profile
+                          │                                └─ be-pfc reads on every chat
+                          │                                     and injects <profile> block
                           │
                           ├─ In whitelist, active, has namespace roles
                           │     └─ /members page + authenticated CogBot chat
-                          │           └─ Long-term memory enabled (Pinecone)
+                          │           ├─ Structured profile (Cloudant, edited by SPA/CMM)
+                          │           └─ Emergent long-term memory (Pinecone via Mem0,
+                          │                 written by the agent's save_memory tool)
                           │
                           └─ Not a member → Access Denied
 ```
 
-The UI is a **static SPA** with zero backend code. All membership logic lives in CMG. Chat API routing, sessions, and streaming are handled by **CAM** (CogBot Access Manager). Long-term memory is managed by **be-pfc** (Prefrontal Cortex backend) using Mem0 and Pinecone.
+The UI is a **static SPA** with zero backend code. All membership logic lives in CMG. Chat API routing, sessions, and streaming are handled by **CAM** (CogBot Access Manager). The structured member profile is stored in Cloudant via CMG; **be-pfc** (Prefrontal Cortex backend) reads it and additionally maintains emergent long-term memory in Pinecone (via Mem0) for facts the user reveals during chat.
 
 ---
 
@@ -263,27 +265,38 @@ When a new member signs in for the first time, CMG returns `autoProvisioned: tru
 2. **Baby Info** — child's name, gender, birthday; supports multiple children via "Add another child"
 3. **All Set** — summary confirmation, then navigates to `/members`
 
-On completion the wizard fires an authenticated message to CAM, which proxies it to be-pfc. The be-pfc agent's `save_memory` tool saves the profile to Pinecone. On every subsequent chat, `get_memory` retrieves the profile and injects it into the system prompt so Buddy can give personalized responses.
+On completion the wizard calls `cmgClient.saveProfile(idToken, { parent, children })`, which `PUT`s the structured profile to CMG (`/auth/me/profile`). CMG persists it on the Cloudant `users` doc under the free-form `profile` field and stamps `updatedAt` / `updatedBy: "self"` server-side. CMG then fires a best-effort cache-invalidation hook to be-pfc so the next agent invocation reads the new value immediately. Onboarding no longer goes through CAM / `save_memory`.
 
 A `localStorage` flag (`onboarded_{uid}`) is set when onboarding is completed or skipped. The members page checks this flag on mount and redirects to `/onboarding` if it is absent, ensuring that users who were removed and re-admitted also go through onboarding.
 
 ### Profile management
 
-Members can update their name and child info at any time via the **Edit Profile** option in the user account dropdown (top-right of every page). Saving sends a new authenticated message to be-pfc (via CAM), which overwrites the existing Pinecone memory entry.
+Members can update their name and child info at any time via the **Edit Profile** option in the user account dropdown (top-right of every page). Saving calls the same `cmgClient.saveProfile` path as onboarding, replacing the stored profile wholesale.
+
+Admins can also view and edit a member's profile from the CogUniversity CMM plugin's member-detail page; admin-initiated saves are stamped `updatedBy: "admin:<email>"`. Both paths invalidate the agent's profile cache automatically so the change is visible on the next chat turn.
 
 Password management via the profile page is supported for Cloud Directory (email/password) users only. Google and other social login users manage their credentials through their identity provider.
 
 ---
 
-## Long-Term Memory (Pinecone)
+## Member Data: Profile vs Long-Term Memory
 
-User profile data is persisted in Pinecone via **be-pfc** (the Prefrontal Cortex AI backend) using [Mem0](https://mem0.ai):
+Member context for Buddy lives in two places, with a deliberate split of concerns:
 
-- **During onboarding / profile save** — the browser sends an authenticated chat message containing the user's name and child info. The be-pfc agent calls `save_memory`, which stores the profile as a JSON document in Pinecone indexed by user ID with scope `user_profile`.
-- **During every chat** — `get_memory` retrieves the stored profile and prepends it to the system prompt as a `<memory>` block. Buddy uses this to personalize all responses.
-- **During chat conversations** — the agent also calls `save_memory` whenever the user discloses additional personal information (preferences, locations, family details, etc.), keeping the profile up to date automatically.
+**Structured profile (Cloudant `users.profile`)** — the authoritative onboarding snapshot (parent name, children, etc.).
 
-`save_memory` only runs for authenticated (non-anonymous) users. Anonymous public chat sessions do not persist memory.
+- Written by the SPA (this app) and CMM, never by the agent.
+- Editable from the SPA's Onboarding wizard, the SPA's Profile page, and the CMM plugin's member-detail page.
+- Stored on the Cloudant `users` doc under `profile` via CMG (`PUT /auth/me/profile` for self, `PUT /admin/members/:email` for admins). Both endpoints stamp `updatedAt` / `updatedBy` server-side.
+- be-pfc reads it on every agent invocation and renders it as a `<profile>` block in the system prompt.
+
+**Long-term memory (Pinecone via Mem0)** — *emergent* facts the user reveals during chat (preferences, opinions, anecdotes, hobbies that aren't part of the structured profile).
+
+- Written exclusively by the be-pfc agent's `save_memory` tool when it detects new self-disclosure in a message.
+- Read on every chat as a `<memory>` block alongside `<profile>`.
+- The agent is explicitly instructed not to mirror fields already present in `<profile>` (parent name, children, etc.) — onboarding data lives in Cloudant, not LTM.
+
+`save_memory` only runs for authenticated (non-anonymous) users. Anonymous public chat sessions do not persist long-term memory.
 
 ---
 

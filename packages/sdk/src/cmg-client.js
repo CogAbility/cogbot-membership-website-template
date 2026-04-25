@@ -87,6 +87,54 @@ export class CmgClient {
   }
 
   // ---------------------------------------------------------------------------
+  // Member profile (self-service)
+  // ---------------------------------------------------------------------------
+
+  /**
+   * Save the authenticated member's profile to Cloudant via CMG.
+   *
+   * The profile is a free-form JSON object — the initial shape coming from the
+   * onboarding wizard is `{ parent, children }`, but it can evolve over time.
+   * CMG stamps `updatedAt` and `updatedBy: "self"` server-side.
+   *
+   * Requires the member to have a users DB record (i.e. at least one successful
+   * login via `POST /auth/validate`).
+   *
+   * @param {string} idToken - App ID JWT id_token.
+   * @param {Object} profile - Profile data to store.
+   * @returns {Promise<{ ok: boolean, profile: Object }>}
+   */
+  async saveProfile(idToken, profile) {
+    const res = await fetch(`${this.host}/auth/me/profile`, {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ idToken, profile }),
+    });
+    if (!res.ok) {
+      const body = await res.json().catch(() => ({}));
+      throw new Error(body.error || `CmgClient: saveProfile failed (${res.status})`);
+    }
+    return res.json();
+  }
+
+  /**
+   * Get the authenticated member's stored profile from CMG.
+   *
+   * @param {string} idToken - App ID JWT id_token.
+   * @returns {Promise<{ profile: Object | null }>}
+   */
+  async getProfile(idToken) {
+    const res = await fetch(
+      `${this.host}/auth/me/profile?idToken=${encodeURIComponent(idToken)}`
+    );
+    if (!res.ok) {
+      const body = await res.json().catch(() => ({}));
+      throw new Error(body.error || `CmgClient: getProfile failed (${res.status})`);
+    }
+    return res.json();
+  }
+
+  // ---------------------------------------------------------------------------
   // Login notification (admin)
   // ---------------------------------------------------------------------------
 

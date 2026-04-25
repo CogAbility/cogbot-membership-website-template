@@ -2,7 +2,6 @@ import { useState } from 'react';
 import { Link } from 'react-router-dom';
 import { useAuth } from '../auth/AuthProvider';
 import { useSiteConfig } from '../config/SiteConfigContext';
-import { sendAuthenticatedMessage, buildOnboardingMessage } from '../services/buddyApi';
 import { emptyChild, FormField, fieldClass, ChildForm } from '../components/ProfileFormFields';
 
 const APPID_OAUTH_URL = import.meta.env.VITE_APPID_OAUTH_SERVER_URL || '';
@@ -19,7 +18,7 @@ function loadFromStorage(key, fallback) {
 
 export default function ProfilePage() {
   const { profile: c, onboarding: oc } = useSiteConfig();
-  const { user } = useAuth();
+  const { user, cmg } = useAuth();
 
   const [parentData, setParentData] = useState(() =>
     loadFromStorage(`profile_parent_${user?.uid}`, {
@@ -71,14 +70,20 @@ export default function ProfilePage() {
       localStorage.setItem(`profile_children_${user.uid}`, JSON.stringify(childrenData));
     }
 
-    const message = buildOnboardingMessage(parentData, childrenData);
-    sendAuthenticatedMessage(message, { idToken: user?.idToken }).catch((err) => {
+    try {
+      await cmg.saveProfile(user?.idToken, {
+        parent: parentData,
+        children: childrenData,
+      });
+      setSavedMessage(c.savedMessage);
+      setTimeout(() => setSavedMessage(null), 4000);
+    } catch (err) {
       console.error('ProfilePage: failed to update profile', err);
-    });
-
-    setIsSaving(false);
-    setSavedMessage(c.savedMessage);
-    setTimeout(() => setSavedMessage(null), 4000);
+      setSavedMessage(c.saveErrorMessage || 'Save failed — please try again.');
+      setTimeout(() => setSavedMessage(null), 4000);
+    } finally {
+      setIsSaving(false);
+    }
   }
 
   const isCloudDirectoryUser = user?.raw?.identities?.some(
