@@ -35,7 +35,7 @@ export default defineConfig(({ mode }) => {
       dedupe: ['react', 'react-dom', 'react-router-dom', 'oidc-client-ts'],
     },
     server: {
-      port: 5174,
+      port: Number(env.VITE_DEV_PORT) || 5175,
       proxy: {
         '/cogbot-api': {
           target: env.VITE_COGBOT_HOST || 'http://localhost:8085',
