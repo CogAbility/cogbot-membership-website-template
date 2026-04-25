@@ -2,7 +2,34 @@
 
 A membership-gated website template powered by CogBot chat and IBM App ID authentication. Use this template to create a branded membership site for your organization — customize it by editing one config file.
 
-All reusable UI components, authentication, and CogBot integration live in the **`@cogability/membership-kit`** package — its source is at `packages/membership-kit/` in this repo and is published to npm as [`@cogability/membership-kit`](https://www.npmjs.com/package/@cogability/membership-kit). The kit is built on **`@cogability/sdk`** (`packages/sdk/`), a framework-agnostic client library that wraps the CAM and CMG HTTP APIs — the same SDK can be used independently in Vue apps, vanilla JS, or Node.js agents. The template shell is a thin wrapper on top of the kit: a config file, styles, static assets, and a `main.jsx` that boots the kit.
+All reusable UI components, authentication, and CogBot integration live in the **[`@cogability/membership-kit`](https://www.npmjs.com/package/@cogability/membership-kit)** npm package. The kit is built on **[`@cogability/sdk`](https://www.npmjs.com/package/@cogability/sdk)** — a framework-agnostic client library that wraps the CAM and CMG HTTP APIs. The same SDK can be used independently in Vue, vanilla JS, or Node.js agents (see "[Two ways to use this template](#two-ways-to-use-this-template)" below).
+
+The template shell is a thin wrapper around the kit: a config file, styles, static assets, and a `main.jsx` that boots `<App config={config} />`. There is no monorepo, no workspace gymnastics — just `npm install` and go. The kit and SDK source code lives in [`CogAbility/cogability-packages`](https://github.com/CogAbility/cogability-packages); contributions to the kit happen there.
+
+---
+
+## Two ways to use this template
+
+### 1. Fork and deploy (recommended for new client sites)
+
+Use this template as the starting point for a customer's membership site. You edit one file (`site.config.js`), drop in your logos, set six environment variables, and deploy to Lovable / Vercel / Netlify. The result is a fully-featured membership SPA: public anonymous chat, App ID sign-in, member onboarding, profile management, gated `/members` page with streaming chat, geofencing, and access control.
+
+→ Continue with [Getting Started](#getting-started).
+
+### 2. Integration reference (for existing sites or non-React apps)
+
+Already have a website or a different framework? The two npm packages are usable on their own:
+
+- **`@cogability/membership-kit`** — drop the React `<App>`, individual pages (`<MembersPage>`, `<OnboardingPage>`, `<ProfilePage>`), or hooks (`useBuddyChat`, `useAuthorization`) into any React 19 site. Pass an `overrides` prop to swap in your own pages.
+- **`@cogability/sdk`** — three plain HTTP clients (`CamClient`, `CmgClient`, `AuthClient`) with no React or DOM dependency. Use them from Vue, Svelte, vanilla JS, a Node.js agent, a Cloudflare Worker — anywhere `fetch` exists.
+
+Reading this template's source is the fastest way to see how everything fits together end-to-end. `src/main.jsx` shows kit bootstrapping; `vite.config.js` shows the dev proxy; the `.env.example` file shows the env-var contract; the architecture and flow diagrams below explain the whole picture.
+
+```bash
+npm install @cogability/sdk @cogability/membership-kit
+```
+
+→ See [`@cogability/sdk` README](https://www.npmjs.com/package/@cogability/sdk) for SDK-only usage, or read the rest of this document for the full picture.
 
 ## How It Works
 
@@ -416,31 +443,28 @@ cogbot-membership-website-template/
   site.config.js          <- Edit this to customize branding, content, and SEO
   .env                    <- Your service credentials (gitignored)
   .env.example            <- Env var template (committed)
-  index.html              <- HTML shell; Vite replaces placeholder tokens with values from site.config.js at build time
-  public/
-    bot-icon.svg            <- Chat avatar icon (replace with your own)
-    org-logo.svg            <- Org logo (replace with your own)
-    favicon.svg             <- Browser tab icon
+  index.html              <- HTML shell; Vite replaces %SITE_TITLE%/%SITE_DESCRIPTION%/etc. from site.config.js at build time
+  public/                 <- Static assets (favicon, logos, bot icon) — replace with your own
+    bot-icon.svg
+    org-logo.svg
+    favicon.svg
   src/
-    main.jsx               Entry point — boots @cogability/membership-kit with your config
-    index.css              Design tokens and global styles
-  packages/
-    membership-kit/        <- Kit source (npm workspace — symlinked into node_modules)
-      package.json         <- Kit version and dependency manifest
-      src/                 <- All components, auth, hooks, services, and pages
-    sdk/                   <- @cogability/sdk — framework-agnostic CAM/CMG client
-      package.json
-      src/
-        cam-client.js      <- CamClient (chat sessions, streaming)
-        cmg-client.js      <- CmgClient (membership, geofencing)
-        auth-client.js     <- AuthClient (OIDC / App ID)
-        sse-parser.js      <- SSE stream parser
-        session-store.js   <- BrowserSessionStore / MemorySessionStore
-  vite.config.js           Build config, dev proxy (CAM)
-  tailwind.config.js       Tailwind config
+    main.jsx              <- Entry point — imports { App } from @cogability/membership-kit and renders it with your config
+    index.css             <- Design tokens (CSS custom properties) and global styles
+  vite.config.js          <- Build config, dev proxy (CAM), and site-meta plugin
+  tailwind.config.js      <- Tailwind v3 config (scans index.html, src/, and the published kit's src/)
+  eslint.config.js        <- ESLint flat config (React 19)
+  postcss.config.js
 ```
 
-All reusable code (auth, chat, pages, components, hooks, streaming) lives in `packages/membership-kit/src/`. The kit depends on `packages/sdk/` (`@cogability/sdk`) for all HTTP communication with CAM and CMG — the SDK has no React dependency and can be used independently in any JavaScript environment. Both packages are wired into the build as npm workspaces — each is symlinked into `node_modules/`. See [`packages/sdk/README.md`](packages/sdk/README.md) for SDK usage examples (Vue, vanilla JS, Node.js agents).
+The template is a single-app Vite project. **All reusable UI lives in `node_modules/@cogability/membership-kit`**, installed from npm. The kit's source repo is [`CogAbility/cogability-packages`](https://github.com/CogAbility/cogability-packages) — that's where you go to contribute to the kit, file kit bugs, or browse kit source. From this template's perspective, the kit is just a normal npm dependency.
+
+To customize beyond `site.config.js` styling, you have two escape hatches:
+
+1. **Page overrides** — pass an `overrides` prop to `<App>` in `src/main.jsx` to replace any page (e.g. `MembersPage`, `OnboardingPage`) with your own component. See [Page overrides](#page-overrides) above.
+2. **Use the kit pieces directly** — drop `import { useBuddyChat, useAuthorization } from '@cogability/membership-kit'` in any of your own components. The kit re-exports its primitives.
+
+If you need to fork the kit itself, work in `cogability-packages` and either publish a new version or use `npm link` for local iteration.
 
 ---
 
@@ -462,7 +486,7 @@ This is a pure static SPA. All server-side logic lives in external services:
 | Layer | Responsibility |
 |---|---|
 | **This UI** | Login UX, onboarding wizard, profile management, page layout, route gating |
-| **`@cogability/sdk`** | Framework-agnostic HTTP client layer — `CamClient` (chat/sessions), `CmgClient` (membership/geofencing), `AuthClient` (OIDC). Used by the kit internally; also importable directly in Vue, vanilla JS, or Node.js agents. See [`packages/sdk/README.md`](packages/sdk/README.md). |
+| **`@cogability/sdk`** | Framework-agnostic HTTP client layer — `CamClient` (chat/sessions), `CmgClient` (membership/geofencing), `AuthClient` (OIDC). Used by the kit internally; also importable directly in Vue, vanilla JS, or Node.js agents. Source: [`CogAbility/cogability-packages`](https://github.com/CogAbility/cogability-packages). |
 | **App ID** | Authentication — issues JWTs, supports email/password and social login (Google, etc.) |
 | **CMG** | Membership validation — verifies JWTs, checks Cloudant, returns roles and `autoProvisioned` flag |
 | **Cloudant** | Source of truth for whitelist entries and role definitions |
