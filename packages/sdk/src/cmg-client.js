@@ -50,6 +50,7 @@ export class CmgClient {
     return {
       isMember: data.isMember === true,
       autoProvisioned: data.autoProvisioned === true,
+      hasProfile: data.hasProfile === true,
       roles: data.roles ?? [],
       geofenced: data.geofenced === true,
       geofenceMessage: data.geofenceMessage ?? null,
