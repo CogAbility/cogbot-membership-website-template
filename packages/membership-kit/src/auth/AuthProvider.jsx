@@ -63,7 +63,7 @@ export function AuthProvider({ children }) {
       setGeofenced(result.geofenced);
       setGeofenceMessage(result.geofenceMessage);
       setMembershipStatus(result.isMember ? 'member' : 'not_member');
-      return result.autoProvisioned;
+      return { autoProvisioned: !!result.autoProvisioned, hasProfile: !!result.hasProfile };
     } catch (err) {
       console.error('AuthProvider: membership validation error', err);
       setIsMember(false);
@@ -72,7 +72,7 @@ export function AuthProvider({ children }) {
       setGeofenced(false);
       setGeofenceMessage(null);
       setMembershipStatus('error');
-      return false;
+      return { autoProvisioned: false, hasProfile: false };
     }
   }, [cmg]);
 
@@ -91,12 +91,12 @@ export function AuthProvider({ children }) {
 
       setUser(oidcUser);
 
-      const wasAutoProvisioned = await validateMembership(idToken);
-      return { success: true, autoProvisioned: wasAutoProvisioned };
+      const { autoProvisioned: wasAutoProvisioned, hasProfile } = await validateMembership(idToken);
+      return { success: true, autoProvisioned: wasAutoProvisioned, hasProfile };
     } catch (err) {
       console.error('AuthProvider: callback error', err);
       setError(err?.message || 'Login failed. Please try again.');
-      return { success: false, autoProvisioned: false };
+      return { success: false, autoProvisioned: false, hasProfile: false };
     } finally {
       setIsLoading(false);
     }
