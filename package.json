@@ -8,6 +8,7 @@
   ],
   "scripts": {
     "dev": "vite",
+    "dev:all": "concurrently -n \"frontend,cam,cmg\" -c \"blue,green,yellow\" \"npm run dev\" \"npm --prefix ../cam-cogbot-access-manager run start-dev\" \"npm --prefix ../cmg-cogbot-membership-gateway run dev\"",
     "build": "vite build",
     "lint": "eslint .",
     "preview": "vite preview"
@@ -21,6 +22,7 @@
     "react-router-dom": "^7.14.0"
   },
   "devDependencies": {
+    "concurrently": "^9.1.2",
     "@eslint/js": "^9.39.4",
     "@types/react": "^19.2.14",
     "@types/react-dom": "^19.2.3",
