@@ -3,7 +3,6 @@ export default {
   content: [
     "./index.html",
     "./src/**/*.{js,ts,jsx,tsx}",
-    "./packages/membership-kit/src/**/*.{js,ts,jsx,tsx}",
     "./node_modules/@cogability/membership-kit/src/**/*.{js,ts,jsx,tsx}",
   ],
   theme: {

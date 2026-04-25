@@ -3,9 +3,6 @@
   "private": true,
   "version": "0.0.0",
   "type": "module",
-  "workspaces": [
-    "packages/*"
-  ],
   "scripts": {
     "dev": "vite",
     "dev:all": "concurrently -n \"frontend,cam,cmg\" -c \"blue,green,yellow\" \"npm run dev\" \"npm --prefix ../cam-cogbot-access-manager run start-dev\" \"npm --prefix ../cmg-cogbot-membership-gateway run dev\"",
@@ -15,7 +12,7 @@
   },
   "dependencies": {
     "@cogability/membership-kit": "^0.2.0",
-    "@cogability/sdk": "^0.1.0",
+    "@cogability/sdk": "^0.1.1",
     "oidc-client-ts": "^3.5.0",
     "react": "^19.2.4",
     "react-dom": "^19.2.4",

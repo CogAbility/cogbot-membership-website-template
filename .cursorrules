@@ -2,25 +2,32 @@
 
 A membership-gated website template powered by CogBot chat and IBM App ID authentication. Each deployment is a single client — customize it by editing `site.config.js`.
 
+This template is a thin Vite shell on top of the **`@cogability/membership-kit`** npm package. The kit exports `<App>`, all pages, all auth, and all chat/SSE logic. The template owns: branding (`site.config.js`), static assets (`public/`), theme (`src/index.css`), the entry point (`src/main.jsx`), and the build (`vite.config.js`, `tailwind.config.js`).
+
+If you need to change kit/SDK code itself, the source lives in [`CogAbility/cogability-packages`](https://github.com/CogAbility/cogability-packages), not in this repo.
+
 ---
 
 ## Architecture
 
-- **React 19 + Vite** — static SPA, no server-side code in this repo
+- **React 19 + Vite 8** — static SPA, no server-side code in this repo
 - **Tailwind CSS v3** — styling via CSS custom properties (design tokens in `src/index.css`)
-- **React Router v7** — client-side routing (`/` public, `/members` gated)
-- **IBM App ID (oidc-client-ts)** — authentication via OIDC popup login
+- **React Router v7** — client-side routing, owned by the kit (`/` public, `/members` gated, `/onboarding`, `/profile`, `/callback`, `/access-denied`)
+- **`@cogability/membership-kit`** — pages, components, auth, hooks, services
+- **`@cogability/sdk`** — `CamClient`, `CmgClient`, `AuthClient` (no React deps)
+- **IBM App ID (oidc-client-ts)** — OIDC popup login (handled by the kit)
 - **CMG (CogBot Membership Gateway)** — external service that validates membership
-- **CogBot widget API** — external chat service
+- **CAM (CogBot Access Manager)** — external service that handles chat sessions and SSE streaming
 
-Authentication flow:
+Authentication flow (handled inside the kit, no template code involved):
 ```
 User clicks Sign In
   → App ID popup (OIDC)
   → idToken stored in sessionStorage
   → POST to CMG /auth/validate with { idToken, namespace }
-  → CMG returns { isMember, roles, geofenced }
+  → CMG returns { isMember, roles, geofenced, hasProfile, autoProvisioned }
   → ProtectedRoute + RoleGate gate the /members page
+  → New auto-provisioned members redirect to /onboarding
 ```
 
 ---
@@ -28,7 +35,7 @@ User clicks Sign In
 ## Where to make changes
 
 ### Change site content, branding, or SEO
-Edit `site.config.js` at the project root. This is the ONLY file that differs between clients. It contains every user-visible string: site name, bot name, page title, meta description, OG tags, hero text, features, testimonials, about section, member page copy, footer text.
+Edit `site.config.js` at the project root. This is the file that differs between clients. It contains every user-visible string: site name, bot name, page title, meta description, OG tags, hero text, features, testimonials, about, member page copy, footer text, login messages, access-denied messages, etc.
 
 The `meta` section controls the page title, description, and social sharing tags:
 ```js
@@ -38,7 +45,7 @@ meta: {
   ogImage: '/og-image.png',  // optional
 }
 ```
-If `meta` is omitted, title defaults to `botName | siteName` and description defaults to `hero.subtitle`.
+If `meta` is omitted, title defaults to `botName | siteName` and description defaults to `hero.subtitle`. The Vite plugin in `vite.config.js` injects these into `index.html` at build time.
 
 ### Change colors or fonts
 Edit the CSS custom properties in `src/index.css` under `:root`. Colors use HSL values:
@@ -58,55 +65,60 @@ Replace files in `public/`. Update the paths in `site.config.js` under `images:`
 - `public/favicon.svg`      — browser tab icon
 
 ### Change auth credentials
-Edit `.env`. Never hardcode credentials in source files.
+Edit `.env`. Never hardcode credentials in source files. The 6 required vars are all `VITE_*` (build-time injection) — see `.env.example`.
 
-### Add a new page
-1. Create `src/pages/MyPage.jsx`
-2. Add a route in `src/App.jsx`:
-   ```jsx
-   <Route path="/my-page" element={<MyPage />} />
-   ```
-3. To make it member-only, wrap it:
-   ```jsx
-   <Route path="/my-page" element={
-     <ProtectedRoute>
-       <RoleGate requiredRole="member">
-         <MyPage />
-       </RoleGate>
-     </ProtectedRoute>
-   } />
-   ```
+### Replace a whole page with a custom one
+Use the `overrides` prop in `src/main.jsx`:
+```jsx
+import { App } from '@cogability/membership-kit';
+import config from '@/site.config';
+import MyMembersPage from './pages/MyMembersPage';
+
+<App config={config} overrides={{ MembersPage: MyMembersPage }} />
+```
+Overridable: `Header`, `Footer`, `LandingPage`, `MembersPage`, `CallbackPage`, `OnboardingPage`, `ProfilePage`.
+
+### Add a new route to this template
+Routes are owned by the kit's internal `<App>`. To add app-level routes outside the kit, do NOT use `<App>` — instead compose the kit's pieces yourself in `src/main.jsx`:
+```jsx
+import { AuthProvider, ProtectedRoute, RoleGate, MembersPage } from '@cogability/membership-kit';
+import { BrowserRouter, Routes, Route } from 'react-router-dom';
+
+<BrowserRouter>
+  <AuthProvider config={config}>
+    <Routes>
+      <Route path="/" element={<MyLanding />} />
+      <Route path="/members" element={
+        <ProtectedRoute><RoleGate><MembersPage /></RoleGate></ProtectedRoute>
+      } />
+      <Route path="/my-page" element={<MyPage />} />
+    </Routes>
+  </AuthProvider>
+</BrowserRouter>
+```
+
+### Change kit or SDK code
+Don't edit `node_modules/@cogability/...`. Open [`CogAbility/cogability-packages`](https://github.com/CogAbility/cogability-packages), make the change there, publish a new version, and `npm update` here.
 
 ---
 
-## File guide
+## File guide (everything in this repo)
 
 | File | Purpose |
 |---|---|
 | `site.config.js` | All branding, content, and SEO — start here for any text or content change |
 | `.env` | Service credentials — copy from `.env.example` and fill in values |
-| `index.html` | **Auto-generated** from `site.config.js` via Vite plugin — do NOT edit directly |
+| `.env.example` | Documents the six required `VITE_*` env vars |
+| `index.html` | HTML shell with `%SITE_TITLE%` / `%SITE_DESCRIPTION%` / `%FAVICON%` / `%OG_IMAGE%` placeholders, replaced at build time by the Vite plugin |
 | `public/` | Logo and icon images (replace placeholders with your own) |
+| `src/main.jsx` | Entry point — imports `{ App }` from the kit and renders `<App config={config} />` |
 | `src/index.css` | Design tokens (colors, fonts) — edit to change the theme |
-| `src/App.jsx` | Route definitions — add new pages here |
-| `src/components/` | Shared UI components — read from site.config.js |
-| `src/pages/` | Page components (LandingPage, MembersPage, etc.) |
-| `src/auth/` | Auth modules — do not modify unless changing auth providers |
-| `src/services/buddyApi.js` | CogBot API client — do not modify unless changing chat provider |
-| `src/hooks/useBuddyChat.js` | Chat state management |
-| `vite.config.js` | Build config, dev proxy, and site meta injection plugin |
+| `vite.config.js` | Build config, dev proxy (`/cogbot-api` → CAM), site-meta plugin |
+| `tailwind.config.js` | Scans `index.html`, `src/**`, and `node_modules/@cogability/membership-kit/src/**` |
+| `eslint.config.js` | ESLint flat config (React 19) |
+| `postcss.config.js` | Tailwind + autoprefixer wiring |
 
----
-
-## Auth modules (do not modify without good reason)
-
-| File | What it does |
-|---|---|
-| `src/auth/AuthProvider.jsx` | App ID login/logout, stores user + membership state |
-| `src/auth/userManager.js` | Configures oidc-client-ts with App ID OIDC settings |
-| `src/auth/ProtectedRoute.jsx` | Shows LoginPage if user is not authenticated |
-| `src/auth/RoleGate.jsx` | Shows AccessDenied if user is not a member or lacks required role |
-| `src/auth/useAuthorization.js` | Calls CMG /auth/validate, returns membership status and roles |
+Anything not listed here lives in `node_modules` and should not be edited.
 
 ---
 
@@ -126,6 +138,8 @@ npm install
 npm run dev
 ```
 
+For full local stack (CMG + CAM + frontend together): `npm run dev:all` (requires sibling `cmg-cogbot-membership-gateway` and `cam-cogbot-access-manager` repos checked out).
+
 ---
 
 ## Common tasks (for AI assistants)
@@ -135,8 +149,10 @@ npm run dev
 - "Change the meta description" → edit `meta.description` in `site.config.js`
 - "Add a testimonial" → add an item to `testimonials.items` in `site.config.js`
 - "Change the primary color" → edit `--primary` in `src/index.css`
-- "Add a new page" → create in `src/pages/`, register in `src/App.jsx`
 - "Change the CogBot" → update `VITE_COGBOT_ID` in `.env`
 - "Change the sign-in button label" → edit `header.signInLabel` in `site.config.js`
 - "Change the bot icon" → replace `public/bot-icon.svg`, update `images.botIcon` in `site.config.js`
 - "Change the org logo" → replace `public/org-logo.svg`, update `images.orgLogo` in `site.config.js`
+- "Add a new page" → see "Add a new route to this template" above (compose kit pieces in `src/main.jsx`)
+- "Replace the members page" → use the `overrides` prop in `src/main.jsx`
+- "Fix a bug in the chat widget" → it lives in the kit; open an issue or PR at `CogAbility/cogability-packages`
