@@ -6,16 +6,16 @@ import CogBotEmbed from '../components/CogBotEmbed'
 
 export default function MembersPage() {
   const { members } = useSiteConfig()
-  const { user, logout } = useAuth()
+  const { user, logout, hasProfile } = useAuth()
   const navigate = useNavigate()
 
   const firstName = user?.firstName || user?.email?.split('@')[0] || 'Member'
 
   useEffect(() => {
-    if (user?.uid && !localStorage.getItem(`onboarded_${user.uid}`)) {
+    if (user?.uid && !hasProfile && !localStorage.getItem(`onboarded_${user.uid}`)) {
       navigate('/onboarding', { replace: true });
     }
-  }, [user?.uid, navigate])
+  }, [user?.uid, hasProfile, navigate])
 
   return (
     <main className="min-h-[calc(100vh-64px)] bg-background">

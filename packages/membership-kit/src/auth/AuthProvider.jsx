@@ -28,6 +28,7 @@ export function AuthProvider({ children }) {
   const [user, setUser] = useState(null);
   const [isMember, setIsMember] = useState(false);
   const [autoProvisioned, setAutoProvisioned] = useState(false);
+  const [hasProfile, setHasProfile] = useState(false);
   const [roles, setRoles] = useState([]);
   const [geofenced, setGeofenced] = useState(false);
   const [geofenceMessage, setGeofenceMessage] = useState(null);
@@ -59,6 +60,7 @@ export function AuthProvider({ children }) {
       const result = await cmg.validateMembership(idToken);
       setIsMember(result.isMember);
       setAutoProvisioned(result.autoProvisioned);
+      setHasProfile(!!result.hasProfile);
       setRoles(result.roles);
       setGeofenced(result.geofenced);
       setGeofenceMessage(result.geofenceMessage);
@@ -110,6 +112,7 @@ export function AuthProvider({ children }) {
     setUser(null);
     setIsMember(false);
     setAutoProvisioned(false);
+    setHasProfile(false);
     setRoles([]);
     setGeofenced(false);
     setGeofenceMessage(null);
@@ -123,6 +126,7 @@ export function AuthProvider({ children }) {
       isAuthenticated: !!user,
       isMember,
       autoProvisioned,
+      hasProfile,
       roles,
       geofenced,
       geofenceMessage,
