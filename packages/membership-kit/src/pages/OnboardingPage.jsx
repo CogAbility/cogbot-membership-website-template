@@ -130,7 +130,7 @@ function StepBabyInfo({ data, onChange, onNext, onBack, onSkip }) {
   );
 }
 
-function StepAllSet({ parentData, childrenData, onComplete, onBack }) {
+function StepAllSet({ parentData, childrenData, onComplete, onBack, isSaving, saveError }) {
   const { onboarding: c } = useSiteConfig();
   const fullName = [parentData.firstName, parentData.lastName].filter(Boolean).join(' ');
 
@@ -175,14 +175,22 @@ function StepAllSet({ parentData, childrenData, onComplete, onBack }) {
       <div className="flex flex-col gap-3">
         <button
           onClick={onComplete}
-          className="btn-primary w-full py-3"
+          disabled={isSaving}
+          className="btn-primary w-full py-3 disabled:opacity-60 flex items-center justify-center gap-2"
         >
-          {c.completeButtonLabel}
+          {isSaving && (
+            <span className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin flex-shrink-0" />
+          )}
+          {isSaving ? (c.savingLabel || 'Saving your profile...') : c.completeButtonLabel}
         </button>
+        {saveError && (
+          <p className="text-sm text-amber-700 text-center">{saveError}</p>
+        )}
         <button
           type="button"
           onClick={onBack}
-          className="text-sm text-muted-foreground hover:text-foreground font-semibold transition-colors text-center"
+          disabled={isSaving}
+          className="text-sm text-muted-foreground hover:text-foreground font-semibold transition-colors text-center disabled:opacity-40"
         >
           {c.backLabel}
         </button>
@@ -237,6 +245,8 @@ export default function OnboardingPage() {
     lastName: user?.lastName || '',
   });
   const [childrenData, setChildrenData] = useState([emptyChild()]);
+  const [isSaving, setIsSaving] = useState(false);
+  const [saveError, setSaveError] = useState(null);
 
   function markOnboardingComplete() {
     if (user?.uid) {
@@ -259,11 +269,18 @@ export default function OnboardingPage() {
   async function handleComplete() {
     markOnboardingComplete();
     persistProfileLocally();
-    const message = buildOnboardingMessage(parentData, childrenData);
-    sendAuthenticatedMessage(message, { idToken: user?.idToken }).catch((err) => {
+    setIsSaving(true);
+    setSaveError(null);
+    try {
+      const message = buildOnboardingMessage(parentData, childrenData);
+      await sendAuthenticatedMessage(message, { idToken: user?.idToken });
+    } catch (err) {
       console.error('Onboarding: failed to save profile', err);
-    });
-    navigate('/members', { replace: true });
+      setSaveError(c.profileSaveErrorWarning || 'We had trouble saving your profile, but you can still chat.');
+    } finally {
+      setIsSaving(false);
+      navigate('/members', { replace: true });
+    }
   }
 
   return (
@@ -301,6 +318,8 @@ export default function OnboardingPage() {
             childrenData={childrenData}
             onComplete={handleComplete}
             onBack={() => setStep(2)}
+            isSaving={isSaving}
+            saveError={saveError}
           />
         )}
       </div>

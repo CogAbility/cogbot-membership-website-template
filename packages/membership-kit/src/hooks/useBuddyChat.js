@@ -3,10 +3,11 @@ import { cam } from '../services/buddyApi';
 import { CamClient } from '@cogability/sdk';
 
 /**
- * Manages the full anonymous chat lifecycle:
- *   1. Establish anonymous session (settokens)
- *   2. Initialize cogbot (init config + greeting)
- *   3. Send/receive messages (JSON or SSE streaming)
+ * Manages the chat lifecycle (anonymous or authenticated):
+ *   1. Check for cam_token in sessionStorage (set by AuthProvider on login)
+ *   2. Establish session: authenticated if cam_token exists, else anonymous
+ *   3. Initialize cogbot (init config + greeting)
+ *   4. Send/receive messages (JSON or SSE streaming) using the appropriate auth mode
  *
  * Returns { messages, isLoading, isInitializing, error, sendMessage, retry, streamingText }.
  */
@@ -20,13 +21,22 @@ export default function useBuddyChat() {
   const streamingRef = useRef(false);
   const abortRef = useRef(null);
   const rafIdRef = useRef(null);
+  const anonymousRef = useRef(true);
 
   const initialize = useCallback(async () => {
     try {
       setIsInitializing(true);
       setError(null);
 
-      await cam.initAnonymous();
+      const idToken = sessionStorage.getItem('cam_token');
+      if (idToken) {
+        await cam.initAuthenticated(idToken);
+        anonymousRef.current = false;
+      } else {
+        await cam.initAnonymous();
+        anonymousRef.current = true;
+      }
+
       const initData = await cam.initCogbot();
       streamingRef.current = initData?.config?.streaming === true;
 
@@ -84,6 +94,7 @@ export default function useBuddyChat() {
       try {
         for await (const { eventName, data } of cam.streamMessage(text.trim(), {
           signal: controller.signal,
+          anonymous: anonymousRef.current,
         })) {
           if (eventName === 'partial_object' || eventName === 'object_ready') {
             const generics = data?.output?.generic;
@@ -127,7 +138,7 @@ export default function useBuddyChat() {
       }
     } else {
       try {
-        const response = await cam.sendMessage(text.trim());
+        const response = await cam.sendMessage(text.trim(), { anonymous: anonymousRef.current });
         const generics = CamClient.parseResponseGeneric(response);
         const botMessages = generics
           .filter((g) => g.response_type === 'text' && g.text)
