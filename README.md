@@ -2,25 +2,34 @@
 
 A membership-gated website template powered by CogBot chat and IBM App ID authentication. Use this template to create a branded membership site for your organization — customize it by editing one config file.
 
-All reusable UI components, authentication, and CogBot integration live in the **[`@cogability/membership-kit`](https://www.npmjs.com/package/@cogability/membership-kit)** npm package. The kit is built on **[`@cogability/sdk`](https://www.npmjs.com/package/@cogability/sdk)** — a framework-agnostic client library that wraps the CAM and CMG HTTP APIs. The same SDK can be used independently in Vue, vanilla JS, or Node.js agents (see "[Two ways to use this template](#two-ways-to-use-this-template)" below).
+All reusable UI components, authentication, and CogBot integration live in the **[`@cogability/membership-kit`](https://www.npmjs.com/package/@cogability/membership-kit)** npm package. The kit is built on **[`@cogability/sdk`](https://www.npmjs.com/package/@cogability/sdk)** — a framework-agnostic client library that wraps the CAM and CMG HTTP APIs. The same SDK can be used independently in Vue, vanilla JS, or Node.js agents (see "[Three ways to use this template](#three-ways-to-use-this-template)" below).
 
 The template shell is a thin wrapper around the kit: a config file, styles, static assets, and a `main.jsx` that boots `<App config={config} />`. There is no monorepo, no workspace gymnastics — just `npm install` and go. The kit and SDK source code lives in [`CogAbility/cogability-packages`](https://github.com/CogAbility/cogability-packages); contributions to the kit happen there.
 
 ---
 
-## Two ways to use this template
+## Three ways to use this template
 
 > **Looking for end-to-end deploy instructions?** See **[`deployment_guidance.md`](deployment_guidance.md)** — step-by-step walkthroughs for three integration paths (fork this template to Lovable / Vercel / Netlify, add CogBot to an existing Lovable site via the SDK, or use `@cogability/sdk` from any framework or Node agent), plus the shared backend allowlisting process.
 
-### 1. Fork and deploy (recommended for new client sites)
+### Path 1: Fork this template (full pre-built features)
 
-Use this template as the starting point for a customer's membership site. You edit one file (`site.config.js`), drop in your logos, set six (or seven, depending on your host) environment variables, and deploy to Lovable / Vercel / Netlify. The result is a fully-featured membership SPA: public anonymous chat, App ID sign-in, member onboarding, profile management, gated `/members` page with streaming chat, geofencing, and access control.
+Use this template as the starting point for a customer's membership site when you want the full pre-built feature set and are comfortable working with GitHub. You edit one file (`site.config.js`), drop in your logos, set six (or seven, depending on your host) environment variables, and deploy to Lovable / Vercel / Netlify. The result is a fully-featured membership SPA: public anonymous chat, App ID sign-in, member onboarding, profile management, gated `/members` page with streaming chat, geofencing, and access control. If you want Lovable's AI to maintain your site for you long-term and you don't write code yourself, choose Path 2 instead.
 
 → Continue with [Getting Started](#getting-started), or see [`deployment_guidance.md` — Path 1](deployment_guidance.md#path-1-fork-this-template-deploy-to-a-static-host) for the full deploy walkthrough.
 
-### 2. Integration reference (for existing sites or non-React apps)
+### Path 2: Lovable-native via integration prompt (recommended for non-technical Lovable users)
 
-Already have a website or a different framework? The two npm packages are usable on their own:
+If you want Lovable's AI to maintain your site for you long-term, and you do not write code yourself, this is the path for you. You bootstrap a regular Lovable project from any membership-style starting prompt, then paste **one** prompt into Lovable's chat. Lovable's AI does the entire CogBot SDK integration — file edits, dependency installs, route wiring — in one pass.
+
+You never touch GitHub, Cursor, npm, or a terminal. All future site changes (copy, branding, layout, even adding new gated pages) happen in Lovable's chat.
+
+→ The validated paste-ready prompt: [`docs/lovable-sdk-integration-prompt.md`](docs/lovable-sdk-integration-prompt.md)
+→ The full Path 2 walkthrough (CogAbility ops onboarding, smoke test): [Path 2 in deployment_guidance.md](deployment_guidance.md#path-2-lovable-native-via-the-integration-prompt)
+
+### Path 3: Use the SDK directly (Vue, Svelte, Node, etc.)
+
+For engineers integrating CogBot into an existing site or a non-React framework, the two npm packages are usable on their own:
 
 - **`@cogability/membership-kit`** — drop the React `<App>`, individual pages (`<MembersPage>`, `<OnboardingPage>`, `<ProfilePage>`), or hooks (`useBuddyChat`, `useAuthorization`) into any React 19 site. Pass an `overrides` prop to swap in your own pages.
 - **`@cogability/sdk`** — three plain HTTP clients (`CamClient`, `CmgClient`, `AuthClient`) with no React or DOM dependency. Use them from Vue, Svelte, vanilla JS, a Node.js agent, a Cloudflare Worker — anywhere `fetch` exists.
@@ -31,7 +40,7 @@ Reading this template's source is the fastest way to see how everything fits tog
 npm install @cogability/sdk @cogability/membership-kit
 ```
 
-→ See [`deployment_guidance.md` — Path 2](deployment_guidance.md#path-2-add-cogbot-to-an-existing-lovable-site) (existing Lovable site) or [Path 3](deployment_guidance.md#path-3-use-cogabilitysdk-from-any-web-app-or-nodejs-agent) (Vue / Svelte / Node / Cloudflare Workers / etc.) for path-specific walkthroughs, or the [`@cogability/sdk` README](https://www.npmjs.com/package/@cogability/sdk) for SDK API reference.
+→ See [`deployment_guidance.md` — Path 3](deployment_guidance.md#path-3-use-cogabilitysdk-from-any-web-app-or-nodejs-agent) for the full walkthrough, or the [`@cogability/sdk` README](https://www.npmjs.com/package/@cogability/sdk) for SDK API reference.
 
 ## How It Works
 
