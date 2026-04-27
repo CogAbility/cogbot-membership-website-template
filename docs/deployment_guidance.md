@@ -8,13 +8,15 @@ Three supported paths to put CogBot chat and IBM App ID membership into a websit
 
 ```mermaid
 flowchart TD
-    Start["Want CogBot chat + membership in a website"] --> Q1{"Building a new site<br/>from scratch?"}
-    Q1 -->|Yes| Q2{"Want AI-driven editing<br/>in Lovable?"}
-    Q1 -->|No| Q3{"Existing site is<br/>a Lovable project?"}
-    Q2 -->|Yes| P1["Path 1: Fork this template,<br/>deploy to Lovable"]
-    Q2 -->|No| P1B["Path 1 variant: Fork this template,<br/>deploy to Vercel / Netlify /<br/>Cloudflare Pages"]
+    Start["Want CogBot chat + membership in a website"] --> Q1{"Starting fresh<br/>or integrating with<br/>an existing site?"}
+    Q1 -->|Starting fresh| Q2{"OK with a React + Vite<br/>+ Tailwind stack?<br/>(what the template uses)"}
+    Q1 -->|Existing site| Q3{"Is the existing site<br/>a Lovable project?"}
+    Q2 -->|Yes| Q4{"Want AI-driven<br/>editing in Lovable?"}
+    Q4 -->|Yes| P1A["Path 1: Fork this template,<br/>deploy to Lovable"]
+    Q4 -->|No| P1B["Path 1: Fork this template,<br/>deploy to Vercel / Netlify /<br/>Cloudflare Pages"]
     Q3 -->|Yes| P2["Path 2: Install @cogability/sdk,<br/>build CogBot UI inside<br/>your existing Lovable stack"]
-    Q3 -->|No| P3["Path 3: Install @cogability/sdk<br/>from any framework<br/>(Vue, Svelte, vanilla, Node.js)"]
+    Q2 -->|Different framework<br/>or Node / edge| P3["Path 3: Install @cogability/sdk<br/>from any framework<br/>(Vue, Svelte, vanilla JS,<br/>Node.js, Cloudflare Workers)"]
+    Q3 -->|No| P3
 ```
 
 | Path | Best for | Effort | Result |
@@ -78,7 +80,7 @@ This creates a clean copy with no upstream link to the template. You can pull fu
 
 ### Step 2 — Customize branding and copy
 
-Edit [`site.config.js`](site.config.js) — every user-visible string lives here. Quick checklist:
+Edit [`site.config.js`](../site.config.js) — every user-visible string lives here. Quick checklist:
 
 - `siteName`, `botName`, `orgName`, `orgUrl`, `poweredByName`
 - `meta.title`, `meta.description` (page title + SEO + social sharing)
@@ -100,7 +102,7 @@ Replace the placeholder images in `public/`:
 
 If you use different file names or formats (`.webp`, `.png`, etc.), update the `images:` section in `site.config.js` accordingly.
 
-Theme colors live in [`src/index.css`](src/index.css) under `:root` as HSL triples. The hero gradient adapts automatically to `--primary`.
+Theme colors live in [`src/index.css`](../src/index.css) under `:root` as HSL triples. The hero gradient adapts automatically to `--primary`.
 
 ### Step 3 — Add production env vars
 
@@ -832,7 +834,7 @@ For Mutation 1 (CAM CORS), the three values pulled from SM are `CLOUDANT_URL`, `
 
 ### For local development
 
-The template ships with `.env.example` documenting the six values. Copy to `.env.local` (gitignored) and fill in dev-cluster credentials for local stack testing. See [`README.md` — Running Locally](README.md#running-locally) for the full local stack walkthrough (CMG + CAM + SPA together).
+The template ships with `.env.example` documenting the six values. Copy to `.env.local` (gitignored) and fill in dev-cluster credentials for local stack testing. See [`README.md` — Running Locally](../README.md#running-locally) for the full local stack walkthrough (CMG + CAM + SPA together).
 
 ---
 
@@ -859,6 +861,6 @@ Cross-references back to the path sections where the deeper context lives.
 
 ## Further reading
 
-- [`README.md`](README.md) — template overview, architecture diagrams, member onboarding flow, streaming, geofencing
+- [`../README.md`](../README.md) — template overview, architecture diagrams, member onboarding flow, streaming, geofencing
 - [`@cogability/sdk` README](https://www.npmjs.com/package/@cogability/sdk) — full SDK reference with code examples for React, Vue, vanilla JS, Node agents, and Cloudflare Workers
 - [`CogAbility/cogability-packages`](https://github.com/CogAbility/cogability-packages) — SDK + membership-kit source, publish process, contributor notes

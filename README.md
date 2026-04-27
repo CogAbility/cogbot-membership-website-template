@@ -10,13 +10,13 @@ The template shell is a thin wrapper around the kit: a config file, styles, stat
 
 ## Two ways to use this template
 
-> **Looking for end-to-end deploy instructions?** See **[`deployment_guidance.md`](deployment_guidance.md)** — step-by-step walkthroughs for three integration paths (fork this template to Lovable / Vercel / Netlify, add CogBot to an existing Lovable site via the SDK, or use `@cogability/sdk` from any framework or Node agent), plus the shared backend allowlisting process.
+> **Looking for end-to-end deploy instructions?** See **[`docs/deployment_guidance.md`](docs/deployment_guidance.md)** — step-by-step walkthroughs for three integration paths (fork this template to Lovable / Vercel / Netlify, add CogBot to an existing Lovable site via the SDK, or use `@cogability/sdk` from any framework or Node agent), plus the shared backend allowlisting process.
 
 ### 1. Fork and deploy (recommended for new client sites)
 
 Use this template as the starting point for a customer's membership site. You edit one file (`site.config.js`), drop in your logos, set six environment variables, and deploy to Lovable / Vercel / Netlify. The result is a fully-featured membership SPA: public anonymous chat, App ID sign-in, member onboarding, profile management, gated `/members` page with streaming chat, geofencing, and access control.
 
-→ Continue with [Getting Started](#getting-started), or see [`deployment_guidance.md` — Path 1](deployment_guidance.md#path-1-fork-this-template-deploy-to-a-static-host) for the full deploy walkthrough.
+→ Continue with [Getting Started](#getting-started), or see [`docs/deployment_guidance.md` — Path 1](docs/deployment_guidance.md#path-1-fork-this-template-deploy-to-a-static-host) for the full deploy walkthrough.
 
 ### 2. Integration reference (for existing sites or non-React apps)
 
@@ -31,7 +31,7 @@ Reading this template's source is the fastest way to see how everything fits tog
 npm install @cogability/sdk @cogability/membership-kit
 ```
 
-→ See [`deployment_guidance.md` — Path 2](deployment_guidance.md#path-2-add-cogbot-to-an-existing-lovable-site) (existing Lovable site) or [Path 3](deployment_guidance.md#path-3-use-cogabilitysdk-from-any-web-app-or-nodejs-agent) (Vue / Svelte / Node / Cloudflare Workers / etc.) for path-specific walkthroughs, or the [`@cogability/sdk` README](https://www.npmjs.com/package/@cogability/sdk) for SDK API reference.
+→ See [`docs/deployment_guidance.md` — Path 2](docs/deployment_guidance.md#path-2-add-cogbot-to-an-existing-lovable-site) (existing Lovable site) or [Path 3](docs/deployment_guidance.md#path-3-use-cogabilitysdk-from-any-web-app-or-nodejs-agent) (Vue / Svelte / Node / Cloudflare Workers / etc.) for path-specific walkthroughs, or the [`@cogability/sdk` README](https://www.npmjs.com/package/@cogability/sdk) for SDK API reference.
 
 ## How It Works
 
