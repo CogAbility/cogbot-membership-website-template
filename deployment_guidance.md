@@ -2,26 +2,26 @@
 
 Three supported paths to put CogBot chat and IBM App ID membership into a website. Pick the one that matches your situation, then follow the step-by-step for that path plus the shared [Backend allowlisting](#backend-allowlisting) section at the end.
 
+**Quick recommendation:** if you are a non-technical user who wants to host on Lovable and never touch GitHub, npm, or a code editor, choose **Path 2**. If you want the full pre-built feature set (onboarding wizard, profile management, member roles, geofencing) and are comfortable with GitHub, choose **Path 1**. For everything else, **Path 3**.
+
 ---
 
 ## Pick your path
 
 ```mermaid
 flowchart TD
-    Start["Want CogBot chat + membership in a website"] --> Q1{"Building a new site<br/>from scratch?"}
-    Q1 -->|Yes| Q2{"Want AI-driven editing<br/>in Lovable?"}
-    Q1 -->|No| Q3{"Existing site is<br/>a Lovable project?"}
-    Q2 -->|Yes| P1["Path 1: Fork this template,<br/>deploy to Lovable"]
-    Q2 -->|No| P1B["Path 1 variant: Fork this template,<br/>deploy to Vercel / Netlify /<br/>Cloudflare Pages"]
-    Q3 -->|Yes| P2["Path 2: Install @cogability/sdk,<br/>build CogBot UI inside<br/>your existing Lovable stack"]
-    Q3 -->|No| P3["Path 3: Install @cogability/sdk<br/>from any framework<br/>(Vue, Svelte, vanilla, Node.js)"]
+    Start["Want CogBot chat + membership in a website"] --> Q1{"Will you maintain the site<br/>via Lovable's AI chat,<br/>without writing code yourself?"}
+    Q1 -->|Yes| P2["Path 2: Lovable-native SDK<br/>integration via paste-the-prompt"]
+    Q1 -->|No| Q2{"Want the full pre-built<br/>feature set (onboarding wizard,<br/>profile mgmt, geofencing)?"}
+    Q2 -->|Yes| P1["Path 1: Fork this template,<br/>deploy to Lovable / Vercel /<br/>Netlify / Cloudflare Pages"]
+    Q2 -->|No| P3["Path 3: Install @cogability/sdk<br/>from any framework<br/>(Vue, Svelte, vanilla, Node.js,<br/>custom React)"]
 ```
 
 | Path | Best for | Effort | Result |
 |---|---|---|---|
-| [Path 1](#path-1-fork-this-template-deploy-to-a-static-host) | New branded membership site | ~1 hour | Fully-featured SPA: public chat, App ID sign-in, member onboarding, gated pages, streaming chat, geofencing |
-| [Path 2](#path-2-add-cogbot-to-an-existing-lovable-site) | Augmenting an existing Lovable project | ~half day (custom UI) | CogBot chat + membership checks wired into your existing layout, routing, and theme |
-| [Path 3](#path-3-use-cogabilitysdk-from-any-web-app-or-nodejs-agent) | Any non-React site, non-Lovable host, or Node.js agent | Varies by framework | Direct HTTP clients — you own the UI entirely |
+| [Path 1](#path-1-fork-this-template-deploy-to-a-static-host) | New branded membership site, full feature set, comfortable with GitHub | ~1 hour | Fully-featured SPA: public chat, App ID sign-in, member onboarding, gated pages, streaming chat, geofencing |
+| [Path 2](#path-2-lovable-native-via-the-integration-prompt) | Non-technical Lovable customer who wants Lovable's AI to handle all future changes | ~5 minutes (paste, publish) | CogBot chat + App ID sign-in + members area wired into a Lovable-native TanStack Start site. Maintainable entirely via Lovable's chat. |
+| [Path 3](#path-3-use-cogabilitysdk-from-any-web-app-or-nodejs-agent) | Any non-React site, non-Lovable host, custom React app, or Node.js agent | Varies by framework | Direct HTTP clients — you own the UI entirely |
 
 ---
 
@@ -52,7 +52,7 @@ Six configuration values wire your site to this backend, regardless of path:
 
 In Vite projects these are named `VITE_*` (e.g. `VITE_CMG_URL`). In Node or other runtimes, name them however your framework wants. See [Obtaining credentials](#obtaining-credentials) for where to get the values.
 
-After your site is live at its production URL, that origin must be added to three allowlists before CMG/CAM calls will work from the browser. This is the same three-step process for every deployment and is documented once in the shared [Backend allowlisting](#backend-allowlisting) section.
+After your site is live at its production URL, that origin must be added to **four** allowlists before the SDK will work end-to-end. CogAbility ops typically runs all four for you via [`tools/provision-lovable-customer.sh`](tools/provision-lovable-customer.sh) — you just send your URL to your CogAbility contact. The mechanics of the four mutations are documented in [Backend allowlisting](#backend-allowlisting).
 
 ---
 
@@ -132,7 +132,9 @@ cp .env.example .env.local
 
 ### Step 4a — Deploy to Lovable
 
-Lovable hosts your site AND gives you an AI editing interface. Worth the extra setup if non-technical stakeholders will be iterating on copy.
+> **Most non-technical Lovable customers should use [Path 2](#path-2-lovable-native-via-the-integration-prompt) instead.** Path 2 is much simpler (paste one prompt, no GitHub) and lets you iterate the site indefinitely via Lovable's chat. Use Path 1 + Lovable only if you specifically want the kit's full pre-built feature set (onboarding wizard, structured profile editing, geofencing, multi-tier role gating) AND you are comfortable with the GitHub-sync gymnastics below.
+
+Lovable hosts your site AND gives you an AI editing interface. Worth the extra setup if non-technical stakeholders will be iterating on copy AND you need the full kit features.
 
 **Important caveat**: Lovable (as of 2026) does not support direct "import from GitHub." Their GitHub sync is bidirectional code-mirroring, but you cannot point a new Lovable project at an existing GitHub repo. Workaround:
 
@@ -260,234 +262,84 @@ If any leg fails, cross-reference the [Troubleshooting](#troubleshooting) table.
 
 ---
 
-## Path 2: Add CogBot to an existing Lovable site
+## Path 2: Lovable-native via the integration prompt
 
 ### When to use
 
-- You already have a Lovable project with your site's brand, layout, and content.
-- You want to add CogBot chat + gated member features without rebuilding the site on a different template.
-- You are comfortable writing custom React (or whatever framework Lovable's default stack uses) against the `@cogability/sdk` primitives.
+- You want a Lovable-hosted membership site that **you maintain entirely via Lovable's chat** (no GitHub, no Cursor, no terminal, no npm).
+- You are non-technical, or technical enough but prefer Lovable's AI handles the code.
+- You don't need the full pre-built kit features (onboarding wizard, structured profile management, member roles, geofencing). If you do need those, choose Path 1 instead.
 
-### Constraint: the full membership-kit does NOT drop into Lovable's default stack
+This path was validated end-to-end in April 2026 against a Lovable TanStack Start project. The integration takes about 5 minutes from start to working sign-in.
 
-Lovable's current scaffolding (as of 2026) uses:
-- TanStack Start + TanStack Router (file-based `src/routes/`)
-- Tailwind CSS v4
-- TypeScript (`.tsx`)
-- Cloudflare Workers deployment target
-- Bun as the runtime/toolchain for dev
+### Result
 
-`@cogability/membership-kit` is:
-- React 19 + React Router v7
-- Tailwind CSS v3
-- JavaScript (`.jsx`)
-- Static Vite build target
-- npm
+A Lovable-native TanStack Start site with:
+- Anonymous chat on the landing page
+- "Sign in" link in the header that redirects through App ID OIDC (Google + email/password)
+- `/members` route gated to authenticated members, with authenticated chat
+- `/access-denied` route for non-members
+- All future changes (copy, layout, branding, even adding new gated pages) go through Lovable's chat
 
-Three incompatibilities prevent the kit from dropping in:
+What this path **does not** include out of the box: onboarding wizard, structured profile editing, geofencing, multi-tier role gating, streaming animation, themed chat widget. These can be added via follow-up Lovable chat prompts but are not part of the validated integration. See "[What this prompt does NOT do](docs/lovable-sdk-integration-prompt.md#what-this-prompt-does-not-do)" in the integration prompt doc.
 
-1. **Router conflict.** The kit's `<App>` component owns its own React Router tree. TanStack Router in your Lovable app also owns routing. Two routers cannot coexist for the same URLs.
-2. **Tailwind version conflict.** Kit class names are authored against Tailwind v3 semantics and its default token set. Running against Tailwind v4 (different config shape, different default tokens) results in broken styling.
-3. **Bootstrap mismatch.** The kit expects to be mounted via `createRoot(...).render(<App config={config}/>)` in a Vite `src/main.jsx` entry. TanStack Start expects `src/routes/__root.tsx` as the root route in a server-entry setup.
+### Prerequisites
 
-### Recommended approach: SDK-only integration
+1. **A Lovable project** at `https://<slug>.lovable.app/` with a membership-style scaffold. If you don't have one yet, bootstrap it in Lovable using a prompt like: *"Build a membership-style site for [your topic]. Include a hero, a sign-in link in the header, a `/members` route, and a `/auth` route for sign-in. Use TanStack Start (the default Lovable framework). Don't add a database or backend — auth and members will be handled by an external integration."*
+2. **Six configuration values** from your CogAbility contact:
+   - `APPID_OAUTH_SERVER_URL`
+   - `APPID_CLIENT_ID`
+   - `CAM_HOST`
+   - `CMG_HOST`
+   - `COGBOT_ID`
+   - `SITE_NAMESPACE`
+3. **CogAbility ops has run the per-customer onboarding** for your site URL. This adds your origin to four allowlists (CAM CORS, CMG, App ID redirect URLs, cogbot host config). See [Backend allowlisting](#backend-allowlisting). Without this, sign-in fails with `redirect_uri_mismatch` and the bot returns empty messages.
 
-Install just [`@cogability/sdk`](https://www.npmjs.com/package/@cogability/sdk) (no UI kit) and build your own CogBot UI inside your Lovable app's existing components and routing.
+### Step 1 — Send your URL to CogAbility
 
-```bash
-npm install @cogability/sdk oidc-client-ts
-```
+Email your CogAbility contact with your Lovable URL (e.g. `https://acme-membership.lovable.app`). They will run [`tools/provision-lovable-customer.sh`](tools/provision-lovable-customer.sh) and confirm when all four allowlists are in place. This usually takes them a few minutes once they get the message. **Do this before pasting the integration prompt** — without the allowlists, you'll see misleading "everything works but the bot is mute" symptoms that look like a code bug but aren't.
 
-### Step 1 — Configure the SDK
+### Step 2 — Paste the integration prompt into Lovable's chat
 
-Create a module that exports configured client instances. Name and location follow your app's conventions (e.g. `src/lib/cogability.ts` in a Lovable TanStack project):
+The validated, paste-ready prompt with all spike fixes baked in lives at:
 
-```ts
-import {
-  AuthClient,
-  BrowserSessionStore,
-  CamClient,
-  CmgClient,
-} from "@cogability/sdk";
+→ [`docs/lovable-sdk-integration-prompt.md`](docs/lovable-sdk-integration-prompt.md)
 
-const env = import.meta.env;
+It contains:
+- Six placeholders to substitute with your config values
+- Hard rules for Lovable's AI (don't install other packages, don't move calls to server functions, don't replace the SDK with a custom OIDC flow, etc.)
+- Step-by-step file creations for `src/lib/cogability.ts`, `src/routes/callback.tsx`, `src/routes/auth.tsx` (override), `src/components/MemberGate.tsx`, `src/components/CogBotChat.tsx`, `src/components/SignInButton.tsx`, `src/routes/access-denied.tsx`
+- An end-of-prompt checklist Lovable's AI must return
 
-export const cam = new CamClient({
-  host: env.VITE_COGBOT_HOST,
-  cogbotId: env.VITE_COGBOT_ID,
-  sessionStore: new BrowserSessionStore(),
-});
+Open the file, copy the entire fenced block under "The prompt to paste", substitute the six placeholders with your real values, and paste the whole block as a single message into Lovable's chat at your project. **Do not split it across multiple messages** — Lovable's AI processes one message as one transaction.
 
-export const cmg = new CmgClient({
-  host: env.VITE_CMG_URL,
-  namespace: env.VITE_SITE_NAMESPACE,
-});
+### Step 3 — Verify Lovable's report and Publish
 
-export const auth = new AuthClient({
-  authorityUrl: env.VITE_APPID_OAUTH_SERVER_URL,
-  clientId: env.VITE_APPID_CLIENT_ID,
-  redirectUri: `${window.location.origin}/callback`,
-  // Routes token exchange through CMG to avoid App ID CORS restrictions:
-  tokenEndpointProxy: `${env.VITE_CMG_URL}/auth/token`,
-});
-```
+Lovable's AI returns a checklist of files created and modified. The expected list is documented in the integration prompt under "[What you should see after Lovable finishes](docs/lovable-sdk-integration-prompt.md#what-you-should-see-after-lovable-finishes)". If anything is off, see "[Iteration troubleshooting](docs/lovable-sdk-integration-prompt.md#iteration-troubleshooting)" — each common failure mode has a recovery prompt you can paste back into Lovable.
 
-**On hosts without SPA fallback** (Lovable `*.lovable.app`, GitHub Pages without 404.html hack): override `redirectUri` to `` `${window.location.origin}/` `` and add a small bootstrapper that calls `auth.handleCallback()` when `URLSearchParams(location.search).has('code')` on the root route. See [Step 4a static host caveat](#step-4a--deploy-to-lovable).
-
-Env vars: same six values as Path 1 (plus optional `VITE_ROUTER_MODE` — typically you'll set this to `hash` for Path 2 since you're already on Lovable). Set them via Lovable's GitHub sync by committing `.env.production` at the root of your Lovable repo.
-
-### Step 2 — Wire the pieces you need
-
-You need five UI touchpoints, each a few lines of code against the SDK:
-
-**2a. Anonymous geofence gate.** On any page that should be hidden in disallowed regions (typically the landing page), call the geofence check on mount. Example as a React hook:
-
-```tsx
-import { useEffect, useState } from "react";
-import { cmg } from "@/lib/cogability";
-
-export function useGeofence() {
-  const [result, setResult] = useState<
-    { loading: true } | { loading: false; geofenced: boolean; message?: string }
-  >({ loading: true });
-  useEffect(() => {
-    cmg.checkGeofence().then(({ geofenced, message }) =>
-      setResult({ loading: false, geofenced: !!geofenced, message })
-    );
-  }, []);
-  return result;
-}
-```
-
-**2b. Sign-in button.** Anywhere in your existing layout:
-
-```tsx
-import { auth } from "@/lib/cogability";
-
-<button onClick={() => auth.login("/members")}>Sign in</button>
-```
-
-`auth.login(returnPath)` redirects to App ID; after successful login the user lands at your `/callback` route, then gets forwarded to `returnPath`.
-
-**2c. Callback route.** Create a page at `/callback` (TanStack Router: `src/routes/callback.tsx`). Its job is to finalize the OIDC handshake and validate membership:
-
-```tsx
-import { useEffect } from "react";
-import { useNavigate } from "@tanstack/react-router"; // or your router
-import { auth, cmg } from "@/lib/cogability";
-
-export default function CallbackPage() {
-  const navigate = useNavigate();
-  useEffect(() => {
-    (async () => {
-      const { user, idToken } = await auth.handleCallback();
-      const membership = await cmg.validateMembership(idToken);
-      if (membership.isMember) {
-        if (membership.autoProvisioned) {
-          navigate({ to: "/onboarding" });
-        } else {
-          navigate({ to: "/members" });
-        }
-      } else {
-        navigate({ to: "/access-denied" });
-      }
-    })();
-  }, []);
-  return <div>Signing you in...</div>;
-}
-```
-
-If you're deploying to `*.lovable.app`, do not rely on a `/callback` route — instead handle the OAuth params at your existing root route (`/`). See [Step 4a static host caveat](#step-4a--deploy-to-lovable).
-
-**2d. Members-only route gate.** For any page that requires membership:
-
-```tsx
-import { useEffect, useState } from "react";
-import { auth, cmg } from "@/lib/cogability";
-
-export function useMembership() {
-  const [state, setState] = useState<{ loading: true } | {
-    loading: false;
-    isMember: boolean;
-    roles: string[];
-    idToken: string | null;
-  }>({ loading: true });
-  useEffect(() => {
-    const idToken = auth.getIdToken();
-    if (!idToken) return setState({ loading: false, isMember: false, roles: [], idToken: null });
-    cmg.validateMembership(idToken).then((m) =>
-      setState({ loading: false, isMember: m.isMember, roles: m.roles || [], idToken })
-    );
-  }, []);
-  return state;
-}
-```
-
-Then in your protected page component: if `!loading && !isMember`, redirect to an access-denied page.
-
-**2e. Chat widget.** Wherever you want CogBot to appear (landing page, members page, embedded panel):
-
-```tsx
-import { useState, useEffect } from "react";
-import { cam, CamClient } from "@cogability/sdk";
-
-export default function BuddyChat({ idToken }: { idToken?: string }) {
-  const [ready, setReady] = useState(false);
-  const [messages, setMessages] = useState<Array<{ role: string; text: string }>>([]);
-
-  useEffect(() => {
-    (async () => {
-      if (idToken) await cam.initAuthenticated(idToken);
-      else await cam.initAnonymous();
-      await cam.initCogbot();
-      const greeting = await cam.fetchGreeting();
-      const parts = CamClient.parseResponseGeneric(greeting)
-        .filter((g) => g.response_type === "text");
-      if (parts[0]) setMessages([{ role: "bot", text: parts[0].text }]);
-      setReady(true);
-    })();
-  }, [idToken]);
-
-  async function send(text: string) {
-    setMessages((m) => [...m, { role: "user", text }, { role: "bot", text: "" }]);
-    for await (const ev of cam.streamMessage(text, { anonymous: !idToken })) {
-      if (ev.eventName === "partial_object") {
-        const parts = CamClient.parseResponseGeneric(ev.data)
-          .filter((g) => g.response_type === "text");
-        if (parts[0]) {
-          setMessages((m) => [
-            ...m.slice(0, -1),
-            { role: "bot", text: parts[0].text },
-          ]);
-        }
-      }
-    }
-  }
-
-  // render your chat UI here
-}
-```
-
-For deeper examples (non-streaming, Node agents, vanilla JS), see [`@cogability/sdk` README](https://www.npmjs.com/package/@cogability/sdk).
-
-### Step 3 — Add your Lovable origin to the three backend allowlists
-
-Same as Path 1. See [Backend allowlisting](#backend-allowlisting).
+Once the report looks right, click **Publish** in Lovable (top-right). Wait until it says "up to date".
 
 ### Step 4 — Smoke test
 
-Open your Lovable site, DevTools Network tab open. Same smoke checks as Path 1 Step 6.
+Open `https://<slug>.lovable.app/` in a fresh incognito window and walk through the seven-step smoke test in the integration prompt under "[Smoke test (run after Publish)](docs/lovable-sdk-integration-prompt.md#smoke-test-run-after-publish)".
 
-### Lovable AI behavior to watch for
+The most common partial-pass after a successful integration is: sign-in works and authenticated chat returns substantive responses, but the *initial greeting* on page load is empty. That's the cogbot's host config not having a welcome string set for your origin (separate from host *recognition*, which is what the ops onboarding script sets). Chat itself works in both anonymous and authenticated modes; only the initial greeting is empty. Ask your CogAbility contact to set a welcome string for your origin if you want one.
 
-When you `npm install @cogability/sdk`, Lovable's AI may suggest:
+### Long-term maintenance via Lovable's chat
 
-- "Migrate to TanStack Query" — fine, the SDK's async methods wrap cleanly.
-- "Move SDK calls into server functions" — dangerous. `AuthClient` uses `window.location`, `window.sessionStorage`, and browser-only OIDC flows. These cannot run on the server. If Lovable's AI moves `auth.handleCallback()` into a server function, the callback will throw.
-- "Add error boundaries around chat" — fine and recommended.
-- "Replace `oidc-client-ts` with a simpler custom flow" — do not accept. The SDK's `AuthClient` wraps `oidc-client-ts` specifically because getting OIDC PKCE + token refresh + silent renewal right is non-trivial.
+Once the integration is in place, you can ask Lovable's chat to make any future changes:
 
-Guard rail: mark any file that imports `AuthClient` or calls `auth.*` as client-only (`"use client"` in Next.js-style meta-frameworks; for TanStack Start, ensure the component is in a non-server-function call path). All SDK code other than `AuthClient` also works on the server (Node-safe).
+- *"Add a profile page at /profile that shows the user's email and a Sign Out button."*
+- *"Change the chat widget to show three animated dots while the bot is thinking."*
+- *"Add a geofence check on the landing page using cmg.checkGeofence(). If geofenced is true, replace the page contents with a polite block message."*
+- *"Add a contact form on the landing page that sends the message via mailto."*
+- *"Make the header navigation responsive — hamburger menu on mobile."*
+
+Lovable's AI handles each as a normal site change. The CogBot integration files don't need re-paste unless you accidentally delete them (see iteration troubleshooting if so). For changes to the OIDC config (e.g. swapping App ID instances), edit the values in `src/lib/cogability.ts` directly via Lovable chat — there's an example targeted-edit prompt in the integration prompt doc.
+
+### Why not the full membership-kit on Lovable?
+
+Lovable's default stack (TanStack Start + TanStack Router + Tailwind v4 + TypeScript + Bun + Cloudflare Workers) is fundamentally incompatible with the kit's stack (React Router v7 + Tailwind v3 + JavaScript + Vite static build + npm). Three blocking conflicts: (1) two routers can't own the same URLs, (2) Tailwind v3 class semantics break under v4, (3) the kit expects a Vite `main.jsx` mount point and TanStack Start expects `__root.tsx`. Path 1 deployed to Lovable works around this by treating Lovable as a static host and using `hash` router mode (see [Step 4a](#step-4a--deploy-to-lovable)) — but that path requires GitHub-sync gymnastics and is fragile under Lovable AI edits. Path 2's "build inside Lovable's native stack with just the SDK" approach avoids all of this, at the cost of not having the kit's pre-built UI.
 
 ---
 
@@ -554,9 +406,12 @@ export default {
       this.messages.push({ role: "user", text });
       const botIdx = this.messages.push({ role: "bot", text: "" }) - 1;
       for await (const ev of this.cam.streamMessage(text)) {
-        if (ev.eventName === "partial_object") {
+        // Handle both partial_object (progressive tokens) and final_response
+        // (the committed assistant message). The final text can arrive only
+        // in final_response if streaming is fast or disabled.
+        if (ev.eventName === "partial_object" || ev.eventName === "final_response") {
           const parts = CamClient.parseResponseGeneric(ev.data)
-            .filter((g) => g.response_type === "text");
+            .filter((g) => g.response_type === "text" && g.text);
           if (parts[0]) this.messages[botIdx].text = parts[0].text;
         }
       }
@@ -567,6 +422,13 @@ export default {
 ```
 
 **Svelte, Angular, vanilla JS** — same pattern. See [`@cogability/sdk` README — Vue / vanilla JS](https://www.npmjs.com/package/@cogability/sdk#vue--vanilla-js--drop-in-chat-widget).
+
+**For React (non-template, non-Lovable)**, the validated TypeScript file contents in [`docs/lovable-sdk-integration-prompt.md`](docs/lovable-sdk-integration-prompt.md) (Steps 2–8: `src/lib/cogability.ts`, `MemberGate`, `CogBotChat`, callback route, sign-in button, access-denied route) are framework-agnostic enough to drop into Next.js, Remix, or a custom Vite + React Router app with only minor route-convention adjustments. Skip the Lovable-specific guardrails in that prompt and use the code blocks as React patterns.
+
+**SDK API gotchas** (validated against CAM as of April 2026):
+- `cam.fetchGreeting()` returns `{ output: Generic[] }` — the array is at `.output` directly. **Do not use `CamClient.parseResponseGeneric(greeting)` for greeting** — that helper expects `.output.generic`, which is the `sendMessage` / `streamMessage final_response` shape, not the greeting shape. Iterate `greeting.output` instead.
+- `cam.streamMessage(text)` yields three event types: `partial_object` (progressive tokens), `object_ready` (a finished cascade layer), and `final_response` (the committed assistant message). Handle both `partial_object` AND `final_response` — fast or non-streaming responses skip `partial_object` entirely and put the full text in `final_response`.
+- Filter generic items with `g.response_type === "text" && g.text` (not just `g.response_type === "text"`) to avoid rendering empty placeholder partials.
 
 ### Step 2b — Node.js agent
 
@@ -637,9 +499,9 @@ If your auth system does NOT federate to App ID, you need a parallel auth flow v
 
 ### Step 3 — Backend allowlisting
 
-Same three mutations as the other paths. If you are running a browser SPA, your production origin must be in CAM and CMG allowlists. If you are running a Node agent or edge worker, your origin is either absent (server-to-server calls bypass browser CORS) OR present as your worker's origin.
+Same four mutations as the other paths (CAM CORS, CMG `ALLOWED_ORIGINS`, App ID redirect URLs, cogbot major config). If you are running a browser SPA, your production origin must be in CAM and CMG allowlists. If you are running a Node agent or edge worker, your origin is either absent (server-to-server calls bypass browser CORS) OR present as your worker's origin. App ID redirect URLs apply only if you are doing browser OIDC via `AuthClient`. Cogbot major config (host recognition) applies to anyone calling CAM with a `host_url` parameter — usually only browser SPAs.
 
-See [Backend allowlisting](#backend-allowlisting).
+See [Backend allowlisting](#backend-allowlisting). For Lovable-hosted browser SPAs, ops typically runs all four via [`tools/provision-lovable-customer.sh`](tools/provision-lovable-customer.sh).
 
 ### Step 4 — Smoke test
 
@@ -662,20 +524,23 @@ console.log(await cmg.checkGeofence());
 
 ## Backend allowlisting
 
-Your site's production origin must be added to three separate allowlists before it can reach CAM and CMG from the browser. If any of the three is missing, the corresponding leg of the flow fails. This section applies equally to Paths 1, 2, and 3.
+Your site's production origin must be added to **four** separate allowlists before the SDK works end-to-end. If any of the four is missing, you get a specific failure mode listed in [What happens if you skip one](#what-happens-if-you-skip-one). This section applies equally to Paths 1, 2, and 3.
 
-Three allowlists, three different mutation mechanisms:
+Four allowlists, four different mutation mechanisms:
 
 | # | What | Where it lives | How to mutate |
 |---|---|---|---|
 | 1 | CAM CORS | Cloudant `cors-whitelist` DB, doc with `_id` = `<CORS_WHITELIST_KEY>`, field `whitelist` (array of origins) | HTTP PUT the doc back with `_rev` + updated array |
 | 2 | CMG `ALLOWED_ORIGINS` | Kubernetes Secret `cmg-secrets` in the namespace where CMG runs, key `ALLOWED_ORIGINS` (comma-separated string) | `kubectl patch` the secret, then `kubectl rollout restart` the CMG deployment |
 | 3 | App ID web redirect URLs | IBM Cloud console → App ID instance → Applications → your client → Web redirect URLs (list) | Click in the IBM Cloud UI (no public API for this field) |
+| 4 | Cogbot major config (host recognition + welcome message) | Tenant-specific — usually a Cloudant cogbot doc or CTM config | Manual edit by CogAbility ops; varies per tenant |
+
+**For Paths 1, 2, and 3, CogAbility ops runs all four for you via [`tools/provision-lovable-customer.sh`](tools/provision-lovable-customer.sh).** The script automates Mutations 1 and 2 fully, and prints precise instructions for Mutations 3 and 4 (which require manual UI / tenant-specific edits). As a customer, all you need to do is send your production URL to your CogAbility contact and confirm when they say all four are in place.
 
 Who runs these steps depends on access:
 
-- **If you are CogAbility ops** and have access to the production AWS, Kubernetes, and IBM Cloud accounts, do all three yourself.
-- **If you are a client** deploying against CogAbility-managed infra, run only step 3 if you have App ID console access (usually yes) and ask your CogAbility contact to run steps 1 and 2.
+- **If you are CogAbility ops** and have access to the production AWS account, the EKS cluster, and IBM Cloud, run [`tools/provision-lovable-customer.sh https://<customer-origin>`](tools/provision-lovable-customer.sh) — it does Mutations 1 and 2 automatically and tells you exactly what to do for 3 and 4. The sections below document each mutation in detail in case you need to debug or run them manually.
+- **If you are a customer** deploying against CogAbility-managed infra: send your production URL to your CogAbility contact. You will not run any of these mutations directly. (If your CogAbility setup gives you App ID console access, you may run Mutation 3 yourself — confirm with ops.)
 
 ### Mutation 1: CAM CORS (Cloudant)
 
@@ -690,52 +555,49 @@ Inside `cors-whitelist`, each doc has a field literally named `whitelist` which 
 
 **Sanity check before writing:** the current `whitelist` array should contain origins like `https://<existing-prod-site>`. If you see email addresses instead, you are in the wrong DB — stop and re-verify.
 
-**Step-by-step (CogAbility ops, using AWS Secrets Manager at `/mc-cap1/secrets` as the credential source):**
+**Step-by-step (CogAbility ops; the [`tools/provision-lovable-customer.sh`](tools/provision-lovable-customer.sh) script wraps all of this — manual steps shown here for debugging context):**
+
+The Cloudant URL, apikey, and CORS whitelist key live in the **Kubernetes secret** `cam-manager-secrets` in the `mc-cap1` namespace. (The AWS Secrets Manager `/mc-cap1/secrets` blob has `CLOUDANT_APIKEY` and `CAM_CORS_WHITELIST_KEY` but does NOT contain `CLOUDANT_URL` — pull from k8s instead.)
 
 ```bash
-# Pull credentials
-CREDS=$(aws secretsmanager get-secret-value \
-  --secret-id /mc-cap1/secrets \
-  --query SecretString --output text)
-CLOUDANT_URL=$(echo "$CREDS" | python3 -c "import sys,json; print(json.load(sys.stdin)['CLOUDANT_URL'])")
-CLOUDANT_APIKEY=$(echo "$CREDS" | python3 -c "import sys,json; print(json.load(sys.stdin)['CLOUDANT_APIKEY'])")
-CORS_WHITELIST_KEY=$(echo "$CREDS" | python3 -c "import sys,json; print(json.load(sys.stdin)['CORS_WHITELIST_KEY'])")
+# Pull credentials from the k8s secret
+CLOUDANT_URL=$(kubectl get secret cam-manager-secrets -n mc-cap1 -o jsonpath='{.data.CLOUDANT_URL}' | base64 -d)
+CLOUDANT_APIKEY=$(kubectl get secret cam-manager-secrets -n mc-cap1 -o jsonpath='{.data.CLOUDANT_APIKEY}' | base64 -d)
+CORS_WHITELIST_KEY=$(kubectl get secret cam-manager-secrets -n mc-cap1 -o jsonpath='{.data.CORS_WHITELIST_KEY}' | base64 -d)
 
 # Get an IAM bearer token (Cloudant IAM apikeys are not compatible with basic auth)
 TOKEN=$(curl -sf -X POST \
   "https://iam.cloud.ibm.com/identity/token" \
   -H "Content-Type: application/x-www-form-urlencoded" \
   -d "grant_type=urn:ibm:params:oauth:grant-type:apikey&apikey=$CLOUDANT_APIKEY" \
-  | python3 -c "import sys,json; print(json.load(sys.stdin)['access_token'])")
+  | jq -r '.access_token')
 
 # Read the current doc
 DOC=$(curl -sf -H "Authorization: Bearer $TOKEN" \
   "$CLOUDANT_URL/cors-whitelist/$CORS_WHITELIST_KEY")
 
-echo "$DOC" | python3 -m json.tool | grep -E '(_id|_rev|whitelist)'
+echo "$DOC" | jq '{_id, _rev, count: (.whitelist | length)}'
 
 # Construct the updated whitelist (replace NEW_ORIGIN below)
 NEW_ORIGIN="https://your-site.example.com"
-REV=$(echo "$DOC" | python3 -c "import sys,json; print(json.load(sys.stdin)['_rev'])")
-NEW_LIST=$(echo "$DOC" | python3 -c "
-import sys,json
-d = json.load(sys.stdin)
-lst = d['whitelist']
-new = '$NEW_ORIGIN'
-if new not in lst: lst.append(new)
-print(json.dumps(lst))
-")
+REV=$(echo "$DOC" | jq -r '._rev')
+NEW_LIST=$(echo "$DOC" | jq --arg new "$NEW_ORIGIN" '.whitelist as $l | (if ($l | index($new)) then $l else $l + [$new] end)')
+PUT_BODY=$(jq -n --arg rev "$REV" --argjson list "$NEW_LIST" '{_rev: $rev, whitelist: $list}')
 
 # PUT the doc back
 curl -sf -X PUT \
   -H "Authorization: Bearer $TOKEN" \
   -H "Content-Type: application/json" \
   "$CLOUDANT_URL/cors-whitelist/$CORS_WHITELIST_KEY" \
-  -d "{\"_rev\":\"$REV\",\"whitelist\":$NEW_LIST}" \
-  | python3 -m json.tool
+  -d "$PUT_BODY" \
+  | jq '.'
+
+# Restart cam-manager so it flushes its 5-minute CORS cache immediately
+kubectl rollout restart deployment/cam-manager -n mc-cap1
+kubectl rollout status  deployment/cam-manager -n mc-cap1
 ```
 
-Expect `{"ok": true, "id": "...", "rev": "..."}` as response.
+Expect `{"ok": true, "id": "...", "rev": "..."}` as the PUT response, and the rollout to complete in ~10–20s.
 
 **Verify the new origin is accepted (after 5-minute cache refresh, or CAM pod restart):**
 
@@ -819,13 +681,36 @@ Verify by constructing the App ID authorize URL manually and opening it in an in
 
 Expect the App ID login page to render (no `redirect_uri_mismatch` error).
 
+### Mutation 4: Cogbot major config (host recognition + welcome message)
+
+The cogbot's "major config" controls which site origins the cogbot will respond to and what welcome message it shows on each. This is **separate from the three CORS / OIDC allowlists above** — those control whether the browser can reach CAM/CMG/App ID at all; this controls whether the cogbot's content cascade has anything to say to a user on a given host.
+
+It is two independent settings:
+
+1. **Host recognition.** Adding the origin makes the cogbot respond to chat messages from that host. Without it, anonymous chat session-init succeeds, the message stream returns HTTP 200, but the assistant's response is silently empty (`output.generic` is `[]`). This is a high-friction silent failure — symptoms look like a frontend bug.
+2. **Welcome message string** (optional but recommended). The cogbot's greeting endpoint (`GET /api/v1/init/greeting/<cogbotId>?host_url=<origin>`) returns a host-specific welcome string. Without one configured for the new origin, the greeting endpoint returns an empty `output` array and the chat opens with no welcome message. Chat itself still works once host recognition is set; only the greeting is empty.
+
+Where this config lives depends on how the cogbot is configured for your tenant — usually a Cloudant cogbot doc or a CTM (Cogability Training Manager) entry. There is no single API; CogAbility ops handles the edit per tenant. The [`tools/provision-lovable-customer.sh`](tools/provision-lovable-customer.sh) script prints the manual steps required at the end of its run.
+
+**Verification after the change:**
+
+```bash
+# Anonymous greeting probe — should return non-empty output array if a welcome
+# string is configured; can be empty array if only host recognition is set
+curl -sf "<CAM_URL>/api/v1/init/greeting/<COGBOT_ID>?host_url=https%3A%2F%2Fyour-site.example.com%2F&language=en-US" | jq .
+```
+
+If `output` is `null` or absent entirely (rather than an empty array), the cogbot doesn't recognize the host yet — re-check the host recognition setting.
+
 ### What happens if you skip one
 
 | Skipped allowlist | Symptom |
 |---|---|
-| CAM CORS | Public chat widget shows "Unable to connect to Buddy". DevTools shows CORS preflight failures on `<CAM_URL>/init`. |
-| CMG ALLOWED_ORIGINS | Landing page renders but geofence probe fails. DevTools shows CORS preflight failure on `<CMG_URL>/auth/geofence/check`. Sign-in may also fail depending on which CMG endpoint runs first. |
-| App ID redirect URLs | Sign-in popup opens, user enters credentials, App ID responds with `redirect_uri_mismatch` and refuses to redirect back. User is stranded on the App ID error page. |
+| Mutation 1 — CAM CORS | Public chat widget shows "Unable to connect to Buddy". DevTools shows CORS preflight failures on `<CAM_URL>/init`. |
+| Mutation 2 — CMG ALLOWED_ORIGINS | Landing page renders but geofence probe fails. DevTools shows CORS preflight failure on `<CMG_URL>/auth/geofence/check`. Sign-in may also fail depending on which CMG endpoint runs first. |
+| Mutation 3 — App ID redirect URLs | Sign-in popup opens, user enters credentials, App ID responds with `redirect_uri_mismatch` and refuses to redirect back. User is stranded on the App ID error page. |
+| Mutation 4 (host recognition) — Cogbot major config | All HTTP calls succeed (sessions, init, message stream all return 200), chat input is enabled, but the bot's reply text is empty. Looks like a parsing bug in the SPA but is actually a backend config issue. |
+| Mutation 4 (welcome string) — Cogbot major config | Anonymous and authenticated chat both work for sent messages, but the initial greeting on page load is empty. Benign — chat is still usable. |
 
 ---
 
@@ -846,19 +731,26 @@ The values are not secret in the cryptographic sense (they end up in your public
 
 ### If you are CogAbility ops
 
-Production values live in AWS Secrets Manager. The mapping:
+Customer-facing values (the six the customer needs):
 
-| Env var | AWS SM key (at `/mc-cap1/secrets`) |
+| Env var | Source |
 |---|---|
-| `VITE_APPID_CLIENT_ID` | derive from App ID instance (see IBM Cloud console) |
-| `VITE_APPID_OAUTH_SERVER_URL` | derive from App ID tenant ID |
-| `VITE_CMG_URL` | `cmg.mc-cap1.cogability.net` (public DNS, not in SM) |
-| `VITE_SITE_NAMESPACE` | varies per namespace (e.g. `bab`, `cu3`) |
-| `VITE_COGBOT_HOST` | `cam.mc-cap1.cogability.net` (public DNS, not in SM) |
+| `VITE_APPID_CLIENT_ID` | IBM Cloud console → App ID instance → Applications → app row |
+| `VITE_APPID_OAUTH_SERVER_URL` | derived from App ID tenant ID: `https://us-south.appid.cloud.ibm.com/oauth/v4/<TENANT_ID>` |
+| `VITE_CMG_URL` | `https://cmg.mc-cap1.cogability.net` (public DNS) |
+| `VITE_SITE_NAMESPACE` | varies per customer namespace (e.g. `bab`, `cu3`) |
+| `VITE_COGBOT_HOST` | `https://cam.mc-cap1.cogability.net` (public DNS) |
 | `VITE_COGBOT_ID` | varies per namespace / site (see Cloudant cogbot docs) |
-| `VITE_ROUTER_MODE` | deployer-determined; defaults to `path`. Set to `hash` for Lovable `*.lovable.app` or other hosts without SPA fallback. Not stored in SM. |
+| `VITE_ROUTER_MODE` | Path 1 deployer-determined; defaults to `path`. Set to `hash` for Lovable `*.lovable.app` Path-1 deploys. Path 2 always uses TanStack Router (no `ROUTER_MODE` concept). Not stored in SM. |
 
-For Mutation 1 (CAM CORS), the three values pulled from SM are `CLOUDANT_URL`, `CLOUDANT_APIKEY`, `CORS_WHITELIST_KEY`. For Mutation 2, the Kubernetes access comes from your CloudShell `kubectl` config pointing at the `mc-cap1` EKS cluster.
+Backend ops credentials (used by the provision script + the manual mutation procedures):
+
+- **Mutation 1 (CAM CORS Cloudant):** Cloudant URL, IAM apikey, and the CORS whitelist doc key live in the **Kubernetes secret** `cam-manager-secrets` in the `mc-cap1` namespace (keys: `CLOUDANT_URL`, `CLOUDANT_APIKEY`, `CORS_WHITELIST_KEY`). The AWS Secrets Manager `/mc-cap1/secrets` blob has `CLOUDANT_APIKEY` and `CAM_CORS_WHITELIST_KEY` but not `CLOUDANT_URL` — pull from k8s instead.
+- **Mutation 2 (CMG `ALLOWED_ORIGINS`):** lives in the Kubernetes secret `cmg-secrets` in the `mc-cap1` namespace, key `ALLOWED_ORIGINS`. `kubectl` access comes from your CloudShell config pointing at the `production-us-east-2` EKS cluster (ARN `arn:aws:eks:us-east-2:001862660410:cluster/production-us-east-2`).
+- **Mutation 3 (App ID redirect URLs):** IBM Cloud console; no API.
+- **Mutation 4 (cogbot major config):** tenant-specific; varies per customer.
+
+The [`tools/provision-lovable-customer.sh`](tools/provision-lovable-customer.sh) script handles all of the credential lookups for Mutations 1 and 2 automatically — you just need an active AWS SSO session against the production account (`aws sso login --profile cogability-admin`).
 
 ### For local development
 
@@ -884,12 +776,19 @@ Cross-references back to the path sections where the deeper context lives.
 | Chat shows "initializing" forever in production | `VITE_COGBOT_HOST` or `VITE_COGBOT_ID` wrong, or CAM is unreachable from the user's network | Double-check values; try `curl <CAM_URL>/init -X POST -H 'Content-Type: application/json' -d '{}'` from the user's network |
 | Sign-in works but user lands on Access Denied | Email not in Cloudant whitelist OR `SITE_NAMESPACE` mismatch between SPA and Cloudant cogbot doc | Cross-check namespace; ask your CogAbility contact to add the email or enable auto-provisioning |
 | `AuthClient` throws `window is not defined` in Path 2 or 3 | `AuthClient` used in a server-rendered context (Next.js server component, TanStack Start server function, SSR framework) | Mark the consuming component as client-only; `AuthClient` is browser-only. Other SDK clients (`CamClient`, `CmgClient`) work on both |
-| `/callback` returns 404 on `*.lovable.app` (or other host without SPA fallback) | Static host doesn't rewrite unknown paths to `index.html` | Set `VITE_ROUTER_MODE=hash` in `.env.production`, redeploy, register the site root (not `/callback`) in App ID. See [Step 4a static host caveat](#step-4a--deploy-to-lovable) |
+| `/callback` returns 404 on `*.lovable.app` (or other host without SPA fallback) | Static host doesn't rewrite unknown paths to `index.html` (Path 1 only — Path 2 uses TanStack Start with worker-level routing and does not have this problem) | Path 1: set `VITE_ROUTER_MODE=hash` in `.env.production`, redeploy, register the site root (not `/callback`) in App ID. See [Step 4a static host caveat](#step-4a--deploy-to-lovable). Path 2: should not happen — verify Lovable's TanStack Start routing is intact |
+| Bot's reply text is empty even though chat input works and HTTP 200 is returned | Cogbot major config doesn't recognize the origin (Mutation 4 host recognition skipped). Common after a customer URL change. | See [Mutation 4](#mutation-4-cogbot-major-config-host-recognition--welcome-message). Ask CogAbility ops to add the origin to the cogbot's host config |
+| Initial chat greeting is empty but sent messages get real responses | Cogbot major config recognizes the host but no welcome message string is configured for it (Mutation 4 welcome string skipped) | Benign — chat is fully usable. Ask CogAbility ops to set a welcome string for the origin if you want one |
+| `CamClient.parseResponseGeneric(greeting)` returns empty array even though greeting fetch returned 200 | The greeting endpoint returns `{output: Generic[]}` with the array at `.output` directly, NOT at `.output.generic`. `parseResponseGeneric` is for `sendMessage` / `streamMessage final_response` shape. | Iterate `greeting.output` directly: `(greeting.output || []).filter(g => g.response_type === 'text' && g.text)` |
+| `streamMessage` fires events but the bot text never renders | Only listening for `partial_object` events. Fast or non-streaming responses skip `partial_object` and put the full text in `final_response`. | Handle both: `if (eventName === "partial_object" \|\| eventName === "final_response")`. See the React (Path 2) and Vue (Path 3) examples for the validated pattern |
+| TanStack Start prerender shows React hydration error #419 in DevTools | Benign — TanStack Start tries to SSR the route, the SDK constructors run during hydration with mismatched DOM, React falls back to a full client render. The page works fine after the warning. | No fix needed for normal use. If it bothers you, mark the SDK-importing routes as client-only via TanStack Start's `client_only` directive convention |
 
 ---
 
 ## Further reading
 
 - [`README.md`](README.md) — template overview, architecture diagrams, member onboarding flow, streaming, geofencing
+- [`docs/lovable-sdk-integration-prompt.md`](docs/lovable-sdk-integration-prompt.md) — the validated paste-ready prompt for Path 2
+- [`tools/provision-lovable-customer.sh`](tools/provision-lovable-customer.sh) — CogAbility-ops script that runs Mutations 1 and 2 and prints instructions for 3 and 4
 - [`@cogability/sdk` README](https://www.npmjs.com/package/@cogability/sdk) — full SDK reference with code examples for React, Vue, vanilla JS, Node agents, and Cloudflare Workers
 - [`CogAbility/cogability-packages`](https://github.com/CogAbility/cogability-packages) — SDK + membership-kit source, publish process, contributor notes
