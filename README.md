@@ -14,7 +14,7 @@ The template shell is a thin wrapper around the kit: a config file, styles, stat
 
 ### 1. Fork and deploy (recommended for new client sites)
 
-Use this template as the starting point for a customer's membership site. You edit one file (`site.config.js`), drop in your logos, set six environment variables, and deploy to Lovable / Vercel / Netlify. The result is a fully-featured membership SPA: public anonymous chat, App ID sign-in, member onboarding, profile management, gated `/members` page with streaming chat, geofencing, and access control.
+Use this template as the starting point for a customer's membership site. You edit one file (`site.config.js`), drop in your logos, set six (or seven, depending on your host) environment variables, and deploy to Lovable / Vercel / Netlify. The result is a fully-featured membership SPA: public anonymous chat, App ID sign-in, member onboarding, profile management, gated `/members` page with streaming chat, geofencing, and access control.
 
 → Continue with [Getting Started](#getting-started), or see [`deployment_guidance.md` — Path 1](deployment_guidance.md#path-1-fork-this-template-deploy-to-a-static-host) for the full deploy walkthrough.
 
@@ -341,6 +341,7 @@ Copy `.env.example` to `.env` and fill in the values from your CogAbility creden
 | `VITE_SITE_NAMESPACE` | Namespace for role filtering (must match Cloudant role definitions) |
 | `VITE_COGBOT_HOST` | CAM (CogBot Access Manager) base URL (no trailing slash). In local dev, leave unset — the Vite proxy defaults to `http://localhost:8085`. In production, set to your deployed CAM URL (e.g. `https://cam.yourplatform.com`). |
 | `VITE_COGBOT_ID` | CogBot ID for this site (e.g. `mc_0091:full`) |
+| `VITE_ROUTER_MODE` (optional) | `path` (default) or `hash`. Set to `hash` for hosts without SPA fallback (Lovable `*.lovable.app`, GitHub Pages without 404.html hack). |
 
 Never commit `.env` to git — it is listed in `.gitignore`.
 
@@ -361,6 +362,7 @@ Never commit `.env` to git — it is listed in `.gitignore`.
    - `VITE_SITE_NAMESPACE`
    - `VITE_COGBOT_HOST` — your deployed CAM URL
    - `VITE_COGBOT_ID`
+   - `VITE_ROUTER_MODE=hash` — required because Lovable's `*.lovable.app` host doesn't do SPA fallback. See [`deployment_guidance.md` — Step 4a static host caveat](deployment_guidance.md#step-4a--deploy-to-lovable).
 4. **Deploy** — Lovable automatically builds and deploys your site. The build command is `npm run build` and the output directory is `dist`.
 5. **Copy your live URL** — once deployed, copy the URL that Lovable gives you (e.g. `https://your-project.lovable.app`).
 6. **Send your URL to CogAbility** — your CogAbility contact needs to add your production URL to the CAM CORS allowlist. Chat will not work until this is done.
@@ -368,7 +370,7 @@ Never commit `.env` to git — it is listed in `.gitignore`.
 
 ### Bolt.new
 
-Import your GitHub repo into [Bolt.new](https://bolt.new). Set the `VITE_*` environment variables in the project settings. Bolt handles the build and deployment automatically.
+Import your GitHub repo into [Bolt.new](https://bolt.new). Set the `VITE_*` environment variables in the project settings (skip `VITE_ROUTER_MODE` — these hosts handle SPA fallback natively). Bolt handles the build and deployment automatically.
 
 ### Replit
 
@@ -379,7 +381,7 @@ Import your repo from GitHub into [Replit](https://replit.com). Set environment 
 Connect your GitHub repo in the platform dashboard. Configure:
 - **Build command:** `npm run build`
 - **Output directory:** `dist`
-- **Environment variables:** add all `VITE_*` variables
+- **Environment variables:** add all `VITE_*` variables (skip `VITE_ROUTER_MODE` — these hosts handle SPA fallback natively)
 
 ### After deploying (all platforms)
 
@@ -427,7 +429,7 @@ The Vite proxy handles CORS automatically during local development — no CORS c
 | Problem | Likely cause | Fix |
 |---|---|---|
 | Chat shows a CORS error in the browser console | Your production domain isn't in the CAM CORS allowlist | Send your live URL to your CogAbility contact |
-| Blank page after deploying | One or more `VITE_*` environment variables are missing | Check that all 6 are set in your platform's settings and redeploy |
+| Blank page after deploying | One or more `VITE_*` environment variables are missing | Check that all required vars are set in your platform's settings and redeploy |
 | Sign-in popup doesn't appear or is blocked | Browser popup blocker | Allow popups for your site's domain, or try a different browser |
 | "Access Denied" after signing in | Your email isn't in the Cloudant member whitelist | Ask your CogAbility contact to add your email, or enable auto-provisioning for your namespace |
 | Images are broken or show "Replace me" | Placeholder images haven't been replaced | Add your own images to `public/` and update `images:` paths in `site.config.js` |

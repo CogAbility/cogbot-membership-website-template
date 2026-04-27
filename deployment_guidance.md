@@ -48,6 +48,7 @@ Six configuration values wire your site to this backend, regardless of path:
 | `SITE_NAMESPACE` | Namespace key for member roles | `CmgClient` |
 | `CAM_URL` | Your deployed CAM base URL | `CamClient` |
 | `COGBOT_ID` | CogBot identifier (e.g. `mc_0091:full`) | `CamClient` |
+| `ROUTER_MODE` (optional) | `path` (default) or `hash`. Use `hash` on hosts without SPA fallback (Lovable `*.lovable.app`, GitHub Pages without 404.html hack). Affects router type and OAuth `redirect_uri` shape. | `App` (`@cogability/membership-kit`) and `AuthClient` redirect URI |
 
 In Vite projects these are named `VITE_*` (e.g. `VITE_CMG_URL`). In Node or other runtimes, name them however your framework wants. See [Obtaining credentials](#obtaining-credentials) for where to get the values.
 
@@ -104,7 +105,7 @@ Theme colors live in [`src/index.css`](src/index.css) under `:root` as HSL tripl
 
 ### Step 3 — Add production env vars
 
-The template's `.env.example` documents the six required `VITE_*` vars. For **production**, create a committed `.env.production` file at the project root:
+The template's `.env.example` documents the six required `VITE_*` vars (plus an optional seventh, `VITE_ROUTER_MODE`, for hosts without SPA fallback). For **production**, create a committed `.env.production` file at the project root:
 
 ```bash
 VITE_APPID_CLIENT_ID=<your_client_id>
@@ -113,6 +114,11 @@ VITE_CMG_URL=<your_cmg_url>
 VITE_SITE_NAMESPACE=<your_namespace>
 VITE_COGBOT_HOST=<your_cam_url>
 VITE_COGBOT_ID=<your_cogbot_id>
+
+# Optional. Set to "hash" only on hosts that don't do SPA fallback
+# (Lovable *.lovable.app, GitHub Pages without 404.html hack).
+# Default: "path" (clean URLs, conventional /callback redirect).
+# VITE_ROUTER_MODE=hash
 ```
 
 Why committed, not secret: these values end up in the public JavaScript bundle anyway (anyone can extract them from DevTools). They are identifiers, not credentials. The template's `.gitignore` excludes `.env` and `.env.local` but NOT `.env.production`, so committing this file is the intended pattern.
@@ -195,6 +201,12 @@ Lovable hosts your site AND gives you an AI editing interface. Worth the extra s
 
 3. **Keep code changes in GitHub.** Lovable's 2-way sync means edits made in Lovable's editor push back to GitHub. For anything non-trivial, edit the GitHub repo directly (locally, via Cursor, via PR). Use Lovable's editor only for minor copy tweaks that the AI is good at.
 
+**Static host caveat — Lovable does not do SPA fallback:**
+
+Lovable's `*.lovable.app` static host returns 404 for any path that isn't an actual file in `dist/`. `_redirects` files are not honored on `*.lovable.app`. This breaks deep links like `/members` and the OAuth `/callback` route.
+
+The kit (`@cogability/membership-kit ^0.3.0`) handles this when you set `VITE_ROUTER_MODE=hash` in `.env.production`. URLs become `/#/members`, and the OAuth redirect lands on `/` where the kit auto-detects `?code=&state=` and finishes login. Pair this with registering `https://<your-slug>.lovable.app/` (the site root, with trailing slash) in App ID — see [Mutation 3](#mutation-3-app-id-web-redirect-urls-ibm-cloud-ui).
+
 ### Step 4b — Deploy to Vercel, Netlify, or Cloudflare Pages
 
 Simpler than Lovable. All three auto-detect Vite projects.
@@ -205,7 +217,7 @@ Simpler than Lovable. All three auto-detect Vite projects.
 2. Framework Preset: **Vite** (auto-detected).
 3. Build Command: `npm run build` (default).
 4. Output Directory: `dist` (default).
-5. Environment Variables: add the six `VITE_*` from your `.env.production` (Vercel reads them from both places, but adding to the dashboard is explicit and reliable).
+5. Environment Variables: add the six `VITE_*` from your `.env.production` (Vercel reads them from both places, but adding to the dashboard is explicit and reliable) (no `VITE_ROUTER_MODE` needed — these hosts do SPA fallback natively, so the default `path` mode works).
 6. Deploy. URL: `https://<project>.vercel.app` or your custom domain.
 
 **Netlify:**
@@ -213,7 +225,7 @@ Simpler than Lovable. All three auto-detect Vite projects.
 1. [netlify.com → New site from Git](https://app.netlify.com/start), connect your repo.
 2. Build command: `npm run build`.
 3. Publish directory: `dist`.
-4. Environment Variables: same six `VITE_*`.
+4. Environment Variables: same six `VITE_*` (no `VITE_ROUTER_MODE` needed — these hosts do SPA fallback natively, so the default `path` mode works).
 5. Deploy. URL: `https://<project>.netlify.app` or custom domain.
 
 **Cloudflare Pages:**
@@ -221,7 +233,7 @@ Simpler than Lovable. All three auto-detect Vite projects.
 1. [dash.cloudflare.com → Pages → Create a project](https://dash.cloudflare.com/?to=/:account/pages) → Connect to Git.
 2. Build command: `npm run build`.
 3. Build output directory: `dist`.
-4. Environment variables: same six `VITE_*` (Pages injects them at build time).
+4. Environment variables: same six `VITE_*` (Pages injects them at build time) (no `VITE_ROUTER_MODE` needed — these hosts do SPA fallback natively, so the default `path` mode works).
 5. Deploy. URL: `https://<project>.pages.dev` or custom domain.
 
 ### Step 5 — Add your production origin to the three backend allowlists
@@ -241,7 +253,7 @@ Open your production URL in an incognito window with DevTools Network tab open. 
 
 1. **Anonymous geofence probe.** `GET <CMG_URL>/auth/geofence/check?namespace=<namespace>` should return `200 { geofenced: false }` (assuming you are inside the allowed geo). The landing page should render normally.
 2. **Anonymous chat.** The public BuddyChat widget on the landing page should initialize (`POST <CAM_URL>/init`) and respond to messages.
-3. **Sign in.** Click the sign-in button. App ID popup opens. After login, you land at `<your-site>/callback`, then `POST <CMG_URL>/auth/validate` returns membership info. New users go to `/onboarding`; existing members go to `/members`.
+3. **Sign in.** Click the sign-in button. App ID popup opens. After login: in `path` mode (default) you land at `<your-site>/callback`; in `hash` mode (Lovable, GitHub Pages) you briefly land at `<your-site>/?code=&state=` and the kit silently navigates to `<your-site>/#/...`. Either way, `POST <CMG_URL>/auth/validate` returns membership info next. New users go to `/onboarding`; existing members go to `/members`.
 4. **Authenticated chat.** On `/members`, send a chat message. Streaming response arrives via SSE. Agent has access to your profile + long-term memory.
 
 If any leg fails, cross-reference the [Troubleshooting](#troubleshooting) table.
@@ -320,7 +332,9 @@ export const auth = new AuthClient({
 });
 ```
 
-Env vars: same six values as Path 1. Set them via Lovable's GitHub sync by committing `.env.production` at the root of your Lovable repo.
+**On hosts without SPA fallback** (Lovable `*.lovable.app`, GitHub Pages without 404.html hack): override `redirectUri` to `` `${window.location.origin}/` `` and add a small bootstrapper that calls `auth.handleCallback()` when `URLSearchParams(location.search).has('code')` on the root route. See [Step 4a static host caveat](#step-4a--deploy-to-lovable).
+
+Env vars: same six values as Path 1 (plus optional `VITE_ROUTER_MODE` — typically you'll set this to `hash` for Path 2 since you're already on Lovable). Set them via Lovable's GitHub sync by committing `.env.production` at the root of your Lovable repo.
 
 ### Step 2 — Wire the pieces you need
 
@@ -382,6 +396,8 @@ export default function CallbackPage() {
   return <div>Signing you in...</div>;
 }
 ```
+
+If you're deploying to `*.lovable.app`, do not rely on a `/callback` route — instead handle the OAuth params at your existing root route (`/`). See [Step 4a static host caveat](#step-4a--deploy-to-lovable).
 
 **2d. Members-only route gate.** For any page that requires membership:
 
@@ -486,7 +502,7 @@ Guard rail: mark any file that imports `AuthClient` or calls `auth.*` as client-
 ### Prerequisites
 
 - Node.js 18+ or a modern browser with `fetch` support.
-- The same six configuration values as the other paths.
+- The same six configuration values as the other paths (plus optional `VITE_ROUTER_MODE` if you are building a browser SPA on a host without SPA fallback).
 
 ### Step 1 — Install
 
@@ -774,18 +790,31 @@ App ID's redirect URL list is not exposed via a public API — it must be edited
 4. Left sidebar → **Applications**.
 5. Find the application row with the **clientId** matching your `APPID_CLIENT_ID`. Click to expand.
 6. Locate the **Web redirect URLs** multi-input field.
-7. Add your site's callback URL:
-   ```
-   https://your-site.example.com/callback
-   ```
-   The SDK's `AuthClient` uses `${window.location.origin}/callback` by convention — the path segment is literally `/callback`.
+7. Add your site's callback URL. **What URL to register depends on your router mode:**
+
+   - **`path` mode (default — Vercel, Netlify, Cloudflare, custom CDN):**
+     ```
+     https://your-site.example.com/callback
+     ```
+     The kit's `BrowserRouter` matches `/callback` to the route that finishes login.
+
+   - **`hash` mode (Lovable `*.lovable.app`, GitHub Pages without 404 hack):**
+     ```
+     https://your-site.example.com/
+     ```
+     Trailing slash matters. The kit's `HashRouter` cannot rely on a `/callback` path because the host returns 404. OAuth lands at the site root and the kit detects `?code=&state=` and finishes login. Do NOT register `https://your-site.example.com/#/callback` — RFC 6749 forbids fragments in `redirect_uri` and App ID will reject it.
+
 8. Keep all existing redirect URLs. Do not remove anything.
 9. Click **Save**.
 
 Verify by constructing the App ID authorize URL manually and opening it in an incognito browser:
 
 ```
+# path mode:
 <APPID_OAUTH_SERVER_URL>/authorization?client_id=<APPID_CLIENT_ID>&response_type=code&redirect_uri=https%3A%2F%2Fyour-site.example.com%2Fcallback&scope=openid&state=test
+
+# hash mode:
+<APPID_OAUTH_SERVER_URL>/authorization?client_id=<APPID_CLIENT_ID>&response_type=code&redirect_uri=https%3A%2F%2Fyour-site.example.com%2F&scope=openid&state=test
 ```
 
 Expect the App ID login page to render (no `redirect_uri_mismatch` error).
@@ -804,7 +833,7 @@ Expect the App ID login page to render (no `redirect_uri_mismatch` error).
 
 ### If you are a CogAbility client or partner
 
-Your CogAbility contact provides a credentials sheet with these six values:
+Your CogAbility contact provides a credentials sheet with these six values (plus an optional seventh, `ROUTER_MODE`, that the deployer sets based on their host's SPA-fallback support):
 
 - `APPID_CLIENT_ID`
 - `APPID_OAUTH_SERVER_URL`
@@ -827,12 +856,13 @@ Production values live in AWS Secrets Manager. The mapping:
 | `VITE_SITE_NAMESPACE` | varies per namespace (e.g. `bab`, `cu3`) |
 | `VITE_COGBOT_HOST` | `cam.mc-cap1.cogability.net` (public DNS, not in SM) |
 | `VITE_COGBOT_ID` | varies per namespace / site (see Cloudant cogbot docs) |
+| `VITE_ROUTER_MODE` | deployer-determined; defaults to `path`. Set to `hash` for Lovable `*.lovable.app` or other hosts without SPA fallback. Not stored in SM. |
 
 For Mutation 1 (CAM CORS), the three values pulled from SM are `CLOUDANT_URL`, `CLOUDANT_APIKEY`, `CORS_WHITELIST_KEY`. For Mutation 2, the Kubernetes access comes from your CloudShell `kubectl` config pointing at the `mc-cap1` EKS cluster.
 
 ### For local development
 
-The template ships with `.env.example` documenting the six values. Copy to `.env.local` (gitignored) and fill in dev-cluster credentials for local stack testing. See [`README.md` — Running Locally](README.md#running-locally) for the full local stack walkthrough (CMG + CAM + SPA together).
+The template ships with `.env.example` documenting the six values (plus an optional seventh). Copy to `.env.local` (gitignored) and fill in dev-cluster credentials for local stack testing. See [`README.md` — Running Locally](README.md#running-locally) for the full local stack walkthrough (CMG + CAM + SPA together).
 
 ---
 
@@ -848,12 +878,13 @@ Cross-references back to the path sections where the deeper context lives.
 | `VITE_*` values appear `undefined` in the built JS bundle | Env vars in `.env` or `.env.local` (not `.env.production`), OR the deploy happened before you committed the env file | Confirm `.env.production` is committed at the repo root; trigger a redeploy |
 | CORS error in DevTools on `<CAM_URL>/init` | CAM CORS allowlist missing your origin | See [Mutation 1](#mutation-1-cam-cors-cloudant) |
 | CORS error in DevTools on `<CMG_URL>/auth/*` | CMG `ALLOWED_ORIGINS` missing your origin | See [Mutation 2](#mutation-2-cmg-allowed_origins-kubernetes) |
-| `redirect_uri_mismatch` from App ID after login | App ID web redirect URLs missing `<your-origin>/callback` | See [Mutation 3](#mutation-3-app-id-web-redirect-urls-ibm-cloud-ui) |
-| Blank page, no errors in console | One or more of the six `VITE_*` values missing | Verify all six are set before the build ran |
+| `redirect_uri_mismatch` from App ID after login | App ID web redirect URLs missing `<your-origin>/callback` (path mode) or `<your-origin>/` (hash mode) | See [Mutation 3](#mutation-3-app-id-web-redirect-urls-ibm-cloud-ui) |
+| Blank page, no errors in console | One or more required `VITE_*` values missing | Verify all required values are set before the build ran |
 | Build succeeds locally, fails on Lovable | Lovable may still have cached TanStack/Cloudflare config from the seed swap | Force redeploy with a trivial commit (whitespace, README change); Lovable re-detects the stack |
 | Chat shows "initializing" forever in production | `VITE_COGBOT_HOST` or `VITE_COGBOT_ID` wrong, or CAM is unreachable from the user's network | Double-check values; try `curl <CAM_URL>/init -X POST -H 'Content-Type: application/json' -d '{}'` from the user's network |
 | Sign-in works but user lands on Access Denied | Email not in Cloudant whitelist OR `SITE_NAMESPACE` mismatch between SPA and Cloudant cogbot doc | Cross-check namespace; ask your CogAbility contact to add the email or enable auto-provisioning |
 | `AuthClient` throws `window is not defined` in Path 2 or 3 | `AuthClient` used in a server-rendered context (Next.js server component, TanStack Start server function, SSR framework) | Mark the consuming component as client-only; `AuthClient` is browser-only. Other SDK clients (`CamClient`, `CmgClient`) work on both |
+| `/callback` returns 404 on `*.lovable.app` (or other host without SPA fallback) | Static host doesn't rewrite unknown paths to `index.html` | Set `VITE_ROUTER_MODE=hash` in `.env.production`, redeploy, register the site root (not `/callback`) in App ID. See [Step 4a static host caveat](#step-4a--deploy-to-lovable) |
 
 ---
 
