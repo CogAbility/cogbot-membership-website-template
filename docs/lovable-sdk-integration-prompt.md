@@ -21,7 +21,7 @@
 
 Lovable's AI will report back with a checklist of files created and modified. The expected list:
 
-- **Created:** `src/lib/cogability.ts`, `src/routes/callback.tsx`, `src/routes/access-denied.tsx`, `src/components/SignInButton.tsx`, `src/components/MemberGate.tsx`, `src/components/CogBotChat.tsx`, `src/types/cogability-sdk.d.ts` (Lovable adds this on its own initiative — accept it).
+- **Created:** `src/lib/cogability.ts`, `src/routes/callback.tsx`, `src/routes/access-denied.tsx`, `src/routes/onboarding.tsx`, `src/components/SignInButton.tsx`, `src/components/MemberGate.tsx`, `src/components/CogBotChat.tsx`, `src/types/cogability-sdk.d.ts` (Lovable adds this on its own initiative — accept it).
 - **Modified:** `src/routes/auth.tsx` (replaced with App ID redirect), `src/routes/members.tsx` (wrapped in `MemberGate`), `src/routes/index.tsx` (added chat below hero), `package.json` + `bun.lockb` (added `@cogability/sdk` and `oidc-client-ts`).
 
 If anything other than that happens, see [Iteration troubleshooting](#iteration-troubleshooting) at the bottom.
@@ -107,11 +107,18 @@ function CallbackPage() {
         if (cancelled) return;
         const m = await cmg.validateMembership(idToken);
         if (cancelled) return;
-        const fallback = m.isMember ? "/members" : "/access-denied";
-        const next = sessionStorage.getItem("auth_return_to") || fallback;
+        const next = sessionStorage.getItem("auth_return_to");
         sessionStorage.removeItem("auth_return_to");
+        // Three branches:
+        //   - autoProvisioned: brand-new member just created by CMG -> /onboarding
+        //   - existing member: returning user -> next || /members
+        //   - non-member: rejected -> /access-denied
         // Full navigation so every component remounts and re-reads the new auth state.
-        window.location.href = m.isMember ? next : "/access-denied";
+        if (m.isMember) {
+          window.location.href = m.autoProvisioned ? "/onboarding" : (next || "/members");
+        } else {
+          window.location.href = "/access-denied";
+        }
       } catch (err) {
         console.error("OIDC callback failed", err);
         window.location.href = "/";
@@ -348,6 +355,65 @@ function AccessDeniedPage() {
 }
 ```
 
+STEP 8b — create file `src/routes/onboarding.tsx` with EXACTLY this content:
+
+```tsx
+import { createFileRoute } from "@tanstack/react-router";
+import { useState } from "react";
+import { auth, cmg } from "@/lib/cogability";
+
+export const Route = createFileRoute("/onboarding")({
+  component: OnboardingPage,
+});
+
+function OnboardingPage() {
+  const [firstName, setFirstName] = useState("");
+  const [saving, setSaving] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  async function save() {
+    if (!firstName.trim() || saving) return;
+    setSaving(true);
+    setError(null);
+    try {
+      const idToken = await auth.getIdToken();
+      if (!idToken) throw new Error("Not signed in");
+      // CMG saves the structured profile and stamps updatedAt/updatedBy server-side.
+      // The shape `{ parent: { firstName } }` matches the kit's onboarding schema so
+      // this profile is portable to any future Path-1 migration.
+      await cmg.saveProfile(idToken, { parent: { firstName: firstName.trim() } });
+      // Full navigation so MemberGate on /members re-reads auth state.
+      window.location.href = "/members";
+    } catch (e) {
+      setError("Could not save your profile. Please try again.");
+      setSaving(false);
+    }
+  }
+
+  return (
+    <div style={{ padding: 32, maxWidth: 480, margin: "0 auto" }}>
+      <h1>Welcome — let's get you set up</h1>
+      <p>What should we call you?</p>
+      <input
+        value={firstName}
+        onChange={(e) => setFirstName(e.target.value)}
+        onKeyDown={(e) => e.key === "Enter" && save()}
+        placeholder="First name"
+        disabled={saving}
+        style={{ width: "100%", padding: 8, marginBottom: 16, fontSize: 16 }}
+        autoFocus
+      />
+      <button onClick={save} disabled={saving || !firstName.trim()}>
+        {saving ? "Saving..." : "Continue"}
+      </button>
+      {error && <p style={{ color: "crimson", marginTop: 8 }}>{error}</p>}
+    </div>
+  );
+}
+```
+
+This is a deliberately minimal onboarding stub: one text input, one button. New members hit it after auto-provisioning, save a first name, and continue to `/members`. Customers can later ask Lovable's chat to extend it (e.g. "add fields for children's names and birthdays, save them under `children: [...]` in the profile").
+
 STEP 9 — when finished, give me back a checklist:
 1. Files you created (with paths).
 2. Files you modified (with paths).
@@ -365,10 +431,12 @@ Open `https://<slug>.lovable.app/` in a fresh incognito window. Then verify each
 | 1 | Page loads | Header, hero, and chat widget render. (A "React error #419" hydration warning in DevTools is benign — TanStack Start re-hydrates client-side.) |
 | 2 | Type a message in the chat below the hero, click Send | Bot responds within ~3s. (Greeting may be empty — that's a separate cogbot config setting; chat itself works.) |
 | 3 | Click "Sign in" in the header | Browser navigates to App ID login page (CogUniversity branding) |
-| 4 | Sign in with Google | Land back at `/members` after a brief `/callback` flash, with an authenticated chat |
+| 4a | First-time sign-in with a new account (auto-provisioning enabled on the cogbot) | Land at `/onboarding` after a brief `/callback` flash. Enter a first name, click Continue, get redirected to `/members` with authenticated chat. |
+| 4b | Returning sign-in (account that has already onboarded) | Land directly at `/members` — onboarding is skipped because `autoProvisioned` is `false` on subsequent logins |
 | 5 | Hard refresh `/members` | Stay on `/members` — session persists |
 | 6 | Open `/members` directly in a different incognito window | "Members only" panel with a Sign in button |
 | 7 | Open `/access-denied` directly | Renders the access-denied copy |
+| 8 | Open `/onboarding` directly while signed in | Renders the onboarding form (re-saving overwrites the stored profile) |
 
 If any step fails, see [Iteration troubleshooting](#iteration-troubleshooting).
 
@@ -406,6 +474,22 @@ Symptoms: "You: ..." appears, "Bot:" stays empty. The CAM network calls return 2
 
 **Cause: App ID's web redirect URLs allowlist doesn't include your origin yet.** Same fix as above — CogAbility ops needs to add `https://<slug>.lovable.app/callback` to the App ID app's redirect URLs.
 
+### New member lands on `/onboarding` but the page is blank or 404
+
+Lovable's AI may have skipped STEP 8b or named the route file something other than `src/routes/onboarding.tsx`. **Recovery prompt:**
+
+```
+You either skipped or mis-created my /onboarding route. Re-create exactly: src/routes/onboarding.tsx with the createFileRoute("/onboarding") component from STEP 8b of the integration prompt. Do not touch any other file. Do not install any package.
+```
+
+### Onboarding "Continue" button gives an error
+
+Symptoms: "Could not save your profile. Please try again." even though everything else works. Open DevTools Network tab, find the `PUT /auth/me/profile` request to CMG, and check the response code:
+
+- **401 / 403** — the idToken expired between sign-in and clicking Continue. Sign out and back in, then try immediately.
+- **CORS error** — your origin isn't in CMG's `ALLOWED_ORIGINS` (Mutation 2). CogAbility ops must run the provision script.
+- **500** — CMG-side issue; report to CogAbility ops with the request's `x-request-id` header.
+
 ### TypeScript build fails with "Could not find a declaration file for '@cogability/sdk'"
 
 Lovable should add `src/types/cogability-sdk.d.ts` automatically. If it didn't, **recovery prompt:**
@@ -430,10 +514,10 @@ You added an auth library I did not ask for. Uninstall it. The only auth in this
 
 It deliberately leaves out features you may want later, to keep the integration small and reviewable:
 
-- **No onboarding flow.** New members go straight to `/members` with no profile-collection step. Add later via Lovable chat: "When a new member first lands on /members, redirect them to /onboarding which collects their name and email and saves to the cogbot via cam.streamMessage(CamClient.buildOnboardingMessage(...))."
-- **No geofencing.** The landing page renders unconditionally. To add geofencing: "Add a geofence check on the landing page using `cmg.checkGeofence()`. If `geofenced: true`, replace the page contents with a polite block message."
-- **No streaming animation.** The chat updates the bot message in chunks but doesn't show a live cursor. Add later: "Add a typing indicator (three animated dots) to the bot's last message while it's empty."
-- **No styled chat widget.** The chat uses inline styles — match it to your site's Tailwind theme later.
-- **No member profile page.** Add via Lovable chat once you know what fields you want.
+- **Minimal onboarding only.** New members are routed to `/onboarding` (a single first-name input that saves to the structured profile via `cmg.saveProfile`) and then to `/members`. There is no multi-step wizard, no fields for children/birthdays, no skip option. Extend later via Lovable chat: *"In `src/routes/onboarding.tsx`, add a second step that collects the user's children (each with a name, gender, and birthday). Save the array under `children` in the profile alongside `parent.firstName`. Use the same `cmg.saveProfile(idToken, { parent, children })` shape."*
+- **No edit-profile page.** Members cannot revise their onboarding answers after the fact. Add later: *"Create a `/profile` route showing the current `parent.firstName` and any children, with an Edit button that re-uses the onboarding form to save updates."*
+- **No geofencing.** The landing page renders unconditionally. To add geofencing: *"Add a geofence check on the landing page using `cmg.checkGeofence()`. If `geofenced: true`, replace the page contents with a polite block message."*
+- **No streaming animation.** The chat updates the bot message in chunks but doesn't show a live cursor. Add later: *"Add a typing indicator (three animated dots) to the bot's last message while it's empty."*
+- **No styled chat or onboarding widgets.** Both use inline styles — match them to your site's Tailwind theme later.
 
 These are intentionally manual follow-ups so customers can layer their preferences on top of a known-working baseline.

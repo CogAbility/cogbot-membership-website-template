@@ -278,10 +278,11 @@ A Lovable-native TanStack Start site with:
 - Anonymous chat on the landing page
 - "Sign in" link in the header that redirects through App ID OIDC (Google + email/password)
 - `/members` route gated to authenticated members, with authenticated chat
+- `/onboarding` route — minimal first-name capture for newly auto-provisioned members; saves the structured profile via `cmg.saveProfile`
 - `/access-denied` route for non-members
 - All future changes (copy, layout, branding, even adding new gated pages) go through Lovable's chat
 
-What this path **does not** include out of the box: onboarding wizard, structured profile editing, geofencing, multi-tier role gating, streaming animation, themed chat widget. These can be added via follow-up Lovable chat prompts but are not part of the validated integration. See "[What this prompt does NOT do](docs/lovable-sdk-integration-prompt.md#what-this-prompt-does-not-do)" in the integration prompt doc.
+What this path **does not** include out of the box: multi-step onboarding wizard, structured profile editing page, geofencing, multi-tier role gating, streaming animation, themed chat widget. The onboarding stub is intentionally minimal (one input, one button) — customers extend it via follow-up Lovable prompts as needed. See "[What this prompt does NOT do](docs/lovable-sdk-integration-prompt.md#what-this-prompt-does-not-do)" in the integration prompt doc.
 
 ### Prerequisites
 
@@ -308,7 +309,7 @@ The validated, paste-ready prompt with all spike fixes baked in lives at:
 It contains:
 - Six placeholders to substitute with your config values
 - Hard rules for Lovable's AI (don't install other packages, don't move calls to server functions, don't replace the SDK with a custom OIDC flow, etc.)
-- Step-by-step file creations for `src/lib/cogability.ts`, `src/routes/callback.tsx`, `src/routes/auth.tsx` (override), `src/components/MemberGate.tsx`, `src/components/CogBotChat.tsx`, `src/components/SignInButton.tsx`, `src/routes/access-denied.tsx`
+- Step-by-step file creations for `src/lib/cogability.ts`, `src/routes/callback.tsx`, `src/routes/auth.tsx` (override), `src/components/MemberGate.tsx`, `src/components/CogBotChat.tsx`, `src/components/SignInButton.tsx`, `src/routes/access-denied.tsx`, `src/routes/onboarding.tsx`
 - An end-of-prompt checklist Lovable's AI must return
 
 Open the file, copy the entire fenced block under "The prompt to paste", substitute the six placeholders with your real values, and paste the whole block as a single message into Lovable's chat at your project. **Do not split it across multiple messages** — Lovable's AI processes one message as one transaction.
