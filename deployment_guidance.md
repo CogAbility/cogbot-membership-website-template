@@ -296,11 +296,7 @@ What this path **does not** include out of the box: multi-step onboarding wizard
    - `SITE_NAMESPACE`
 3. **CogAbility ops has run the per-customer onboarding** for your site URL. This adds your origin to four allowlists (CAM CORS, CMG, App ID redirect URLs, cogbot host config). See [Backend allowlisting](#backend-allowlisting). Without this, sign-in fails with `redirect_uri_mismatch` and the bot returns empty messages.
 
-### Step 1 — Send your URL to CogAbility
-
-Email your CogAbility contact with your Lovable URL (e.g. `https://acme-membership.lovable.app`). They will run [`tools/provision-lovable-customer.sh`](tools/provision-lovable-customer.sh) and confirm when all four allowlists are in place. This usually takes them a few minutes once they get the message. **Do this before pasting the integration prompt** — without the allowlists, you'll see misleading "everything works but the bot is mute" symptoms that look like a code bug but aren't.
-
-### Step 2 — Paste the integration prompt into Lovable's chat
+### Step 1 — Paste the integration prompt into Lovable's chat
 
 The validated, paste-ready prompt with all spike fixes baked in lives at:
 
@@ -314,17 +310,21 @@ It contains:
 
 Open the file, copy the entire fenced block under "The prompt to paste", substitute the six placeholders with your real values, and paste the whole block as a single message into Lovable's chat at your project. **Do not split it across multiple messages** — Lovable's AI processes one message as one transaction.
 
-### Step 3 — Verify Lovable's report and Publish
+### Step 2 — Verify Lovable's report and Publish
 
 Lovable's AI returns a checklist of files created and modified. The expected list is documented in the integration prompt under "[What you should see after Lovable finishes](docs/lovable-sdk-integration-prompt.md#what-you-should-see-after-lovable-finishes)". If anything is off, see "[Iteration troubleshooting](docs/lovable-sdk-integration-prompt.md#iteration-troubleshooting)" — each common failure mode has a recovery prompt you can paste back into Lovable.
 
 Once the report looks right, click **Publish** in Lovable (top-right). Wait until it says "up to date".
 
+### Step 3 — Send your URL to CogAbility
+
+Once Publish reports "up to date", email your CogAbility contact with your Lovable URL (e.g. `https://acme-membership.lovable.app`). They will run [`tools/provision-lovable-customer.sh`](tools/provision-lovable-customer.sh) and confirm when all four allowlists are in place. This usually takes them a few minutes once they get the message. **Wait for that confirmation before running the smoke test below** — without the allowlists, sign-in throws `redirect_uri_mismatch`, the chat is empty, and the smoke test will look like everything is broken even though your code is correct.
+
 ### Step 4 — Smoke test
 
-Open `https://<slug>.lovable.app/` in a fresh incognito window and walk through the seven-step smoke test in the integration prompt under "[Smoke test (run after Publish)](docs/lovable-sdk-integration-prompt.md#smoke-test-run-after-publish)".
+Once your CogAbility contact confirms the allowlists are in place, open `https://<slug>.lovable.app/` in a fresh incognito window and walk through the smoke test in the integration prompt under "[Smoke test (run after Publish)](docs/lovable-sdk-integration-prompt.md#smoke-test-run-after-publish)".
 
-The most common partial-pass after a successful integration is: sign-in works and authenticated chat returns substantive responses, but the *initial greeting* on page load is empty. That's the cogbot's host config not having a welcome string set for your origin (separate from host *recognition*, which is what the ops onboarding script sets). Chat itself works in both anonymous and authenticated modes; only the initial greeting is empty. Ask your CogAbility contact to set a welcome string for your origin if you want one.
+The most common partial-pass after a successful integration is: sign-in works and authenticated chat returns substantive responses, but the initial greeting on page load is empty. The cogbot major config has two independent host lists — one for chat replies (`context_boosting_config`) and one for greetings (`welcome_message_config`) — and `pfc2` caches the major config in-process separately from `cam-manager`. If your origin is in the chat list but not the greeting list, OR `pfc2` was not restarted after the Cloudant doc was updated, you see exactly this symptom. See [Mutation 4](#mutation-4-cogbot-major-config-host-recognition--welcome-message) and the troubleshooting rows for "Initial chat greeting is empty but sent messages get real responses" and "Greeting is still empty after ops added the host to welcome_message_config and restarted cam-manager". Ask your CogAbility contact to confirm both host lists were updated and `pfc2` was restarted.
 
 ### Long-term maintenance via Lovable's chat
 

@@ -13,6 +13,8 @@
    - `CMG_HOST`
    - `COGBOT_ID`
    - `SITE_NAMESPACE`
+
+   *If your CogAbility contact's email lists these values with a `VITE_` prefix (e.g. `VITE_APPID_CLIENT_ID`, `VITE_CMG_URL`, `VITE_COGBOT_HOST`), drop the prefix when substituting — they are the same values. The `VITE_` form is from the Path 1 React-template convention; Path 2 hardcodes them into `src/lib/cogability.ts` instead of reading from environment variables, so the unprefixed names are what appears in the prompt below. Mapping: `VITE_APPID_CLIENT_ID` → `APPID_CLIENT_ID`, `VITE_APPID_OAUTH_SERVER_URL` → `APPID_OAUTH_SERVER_URL`, `VITE_CMG_URL` → `CMG_HOST`, `VITE_SITE_NAMESPACE` → `SITE_NAMESPACE`, `VITE_COGBOT_HOST` → `CAM_HOST`, `VITE_COGBOT_ID` → `COGBOT_ID`.*
 2. **Confirm CogAbility ops has run the per-customer onboarding** for your site URL (this allowlists your origin in CAM CORS, CMG, App ID, and the cogbot's host config). One command on their end — see [`tools/provision-lovable-customer.sh`](../tools/provision-lovable-customer.sh). Without this, you'll see a working chat input that responds with empty messages, and sign-in will fail with `redirect_uri_mismatch`.
 3. **Replace the six placeholders** in the prompt below with your actual values before pasting.
 4. **Open Lovable chat** at your project (`https://<slug>.lovable.app`) and paste the entire fenced block as a single message. Do not break it into multiple messages.
@@ -445,8 +447,8 @@ Open `https://<slug>.lovable.app/` in a fresh incognito window. Then verify each
 
 | # | Action | Expected |
 |---|---|---|
-| 1 | Page loads | Header, hero, and chat widget render. (A "React error #419" hydration warning in DevTools is benign — TanStack Start re-hydrates client-side.) |
-| 2 | Type a message in the chat below the hero, click Send | Bot responds within ~3s. (Greeting may be empty — that's a separate cogbot config setting; chat itself works.) |
+| 1 | Page loads | Header, hero, and chat widget render. The bot's welcome message appears in the chat with HTML formatting preserved (paragraphs, bold, inline images). (A "React error #419" hydration warning in DevTools is benign — TanStack Start re-hydrates client-side.) |
+| 2 | Type a message in the chat below the hero, click Send | Bot responds within ~3s with HTML-formatted text. |
 | 3 | Click "Sign in" in the header | Browser navigates to App ID login page (CogUniversity branding) |
 | 4a | First-time sign-in with a new account (auto-provisioning enabled on the cogbot) | Land at `/onboarding` after a brief `/callback` flash. Enter a first name, click Continue, get redirected to `/members` with authenticated chat. |
 | 4b | Returning sign-in (account that has already onboarded) | Land directly at `/members` — onboarding is skipped because `autoProvisioned` is `false` on subsequent logins |
