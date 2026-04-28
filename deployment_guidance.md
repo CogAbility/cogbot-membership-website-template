@@ -278,10 +278,11 @@ A Lovable-native TanStack Start site with:
 - Anonymous chat on the landing page
 - "Sign in" link in the header that redirects through App ID OIDC (Google + email/password)
 - `/members` route gated to authenticated members, with authenticated chat
+- `/onboarding` route — minimal first-name capture for newly auto-provisioned members; saves the structured profile via `cmg.saveProfile`
 - `/access-denied` route for non-members
 - All future changes (copy, layout, branding, even adding new gated pages) go through Lovable's chat
 
-What this path **does not** include out of the box: onboarding wizard, structured profile editing, geofencing, multi-tier role gating, streaming animation, themed chat widget. These can be added via follow-up Lovable chat prompts but are not part of the validated integration. See "[What this prompt does NOT do](docs/lovable-sdk-integration-prompt.md#what-this-prompt-does-not-do)" in the integration prompt doc.
+What this path **does not** include out of the box: multi-step onboarding wizard, structured profile editing page, geofencing, multi-tier role gating, streaming animation, themed chat widget. The onboarding stub is intentionally minimal (one input, one button) — customers extend it via follow-up Lovable prompts as needed. See "[What this prompt does NOT do](docs/lovable-sdk-integration-prompt.md#what-this-prompt-does-not-do)" in the integration prompt doc.
 
 ### Prerequisites
 
@@ -308,7 +309,7 @@ The validated, paste-ready prompt with all spike fixes baked in lives at:
 It contains:
 - Six placeholders to substitute with your config values
 - Hard rules for Lovable's AI (don't install other packages, don't move calls to server functions, don't replace the SDK with a custom OIDC flow, etc.)
-- Step-by-step file creations for `src/lib/cogability.ts`, `src/routes/callback.tsx`, `src/routes/auth.tsx` (override), `src/components/MemberGate.tsx`, `src/components/CogBotChat.tsx`, `src/components/SignInButton.tsx`, `src/routes/access-denied.tsx`
+- Step-by-step file creations for `src/lib/cogability.ts`, `src/routes/callback.tsx`, `src/routes/auth.tsx` (override), `src/components/MemberGate.tsx`, `src/components/CogBotChat.tsx`, `src/components/SignInButton.tsx`, `src/routes/access-denied.tsx`, `src/routes/onboarding.tsx`
 - An end-of-prompt checklist Lovable's AI must return
 
 Open the file, copy the entire fenced block under "The prompt to paste", substitute the six placeholders with your real values, and paste the whole block as a single message into Lovable's chat at your project. **Do not split it across multiple messages** — Lovable's AI processes one message as one transaction.
@@ -685,22 +686,33 @@ Expect the App ID login page to render (no `redirect_uri_mismatch` error).
 
 The cogbot's "major config" controls which site origins the cogbot will respond to and what welcome message it shows on each. This is **separate from the three CORS / OIDC allowlists above** — those control whether the browser can reach CAM/CMG/App ID at all; this controls whether the cogbot's content cascade has anything to say to a user on a given host.
 
-It is two independent settings:
+It is two independent settings backed by **two independent host-allowlist fields** in the same Cloudant doc. Adding the origin to one does NOT add it to the other:
 
-1. **Host recognition.** Adding the origin makes the cogbot respond to chat messages from that host. Without it, anonymous chat session-init succeeds, the message stream returns HTTP 200, but the assistant's response is silently empty (`output.generic` is `[]`). This is a high-friction silent failure — symptoms look like a frontend bug.
-2. **Welcome message string** (optional but recommended). The cogbot's greeting endpoint (`GET /api/v1/init/greeting/<cogbotId>?host_url=<origin>`) returns a host-specific welcome string. Without one configured for the new origin, the greeting endpoint returns an empty `output` array and the chat opens with no welcome message. Chat itself still works once host recognition is set; only the greeting is empty.
+1. **Host recognition for chat replies** — `context_boosting_config[*].conditions[*].$or[*].cap_host_url.$contains`. Adding the origin here makes the cogbot respond to chat messages from that host. Without it, anonymous chat session-init succeeds, the message stream returns HTTP 200, but the assistant's response is silently empty (`output.generic` is `[]`). High-friction silent failure — symptoms look like a frontend bug.
+2. **Host recognition for greeting / welcome message** — `welcome_message_config[*].conditions[*].$and[*].cap_host_url.$contains`. Adding the origin here (alongside an existing welcome-message rule) makes the greeting endpoint return a non-empty `output` array. Without it, `GET /api/v1/init/greeting/<cogbotId>?host_url=<origin>` returns `output: []` and the chat opens with no welcome message. Chat itself still works once #1 is set; only the greeting is empty.
 
-Where this config lives depends on how the cogbot is configured for your tenant — usually a Cloudant cogbot doc or a CTM (Cogability Training Manager) entry. There is no single API; CogAbility ops handles the edit per tenant. The [`tools/provision-lovable-customer.sh`](tools/provision-lovable-customer.sh) script prints the manual steps required at the end of its run.
+For most tenants the doc is `major/<namespace>` in the `cogability` Cloudant database (e.g. `major/bab_healthcare`). The doc has top-level `context_boosting_config` and `welcome_message_config` arrays — find the rule whose `cap_host_url.$contains` already lists similar customer hosts and append the new origin's bare hostname (no protocol, no trailing slash, e.g. `acme-membership.lovable.app`). `$contains` is a substring match against the live `cap_host_url` (which is the full URL the SPA sent, e.g. `https://acme-membership.lovable.app/`), so a bare hostname matches cleanly.
+
+**Cache invalidation — both `cam-manager` AND `pfc2` cache the major config.** After updating the Cloudant doc you must roll BOTH deployments, or one of them will continue serving the stale config:
+
+```bash
+kubectl -n mc-cap1 rollout restart deployment cam-manager
+kubectl -n mc-cap1 rollout restart deployment pfc2
+kubectl -n mc-cap1 rollout status deployment cam-manager --timeout=180s
+kubectl -n mc-cap1 rollout status deployment pfc2        --timeout=180s
+```
+
+Restarting only `cam-manager` is the most common reason "I added the host but the greeting is still empty" — the greeting is generated by `pfc2`, not `cam-manager`.
 
 **Verification after the change:**
 
 ```bash
-# Anonymous greeting probe — should return non-empty output array if a welcome
-# string is configured; can be empty array if only host recognition is set
+# Anonymous greeting probe — should return non-empty output array if both the
+# host has been added to welcome_message_config AND pfc2 has been restarted
 curl -sf "<CAM_URL>/api/v1/init/greeting/<COGBOT_ID>?host_url=https%3A%2F%2Fyour-site.example.com%2F&language=en-US" | jq .
 ```
 
-If `output` is `null` or absent entirely (rather than an empty array), the cogbot doesn't recognize the host yet — re-check the host recognition setting.
+If `output` is `[]`: the host is not in `welcome_message_config[*].cap_host_url.$contains` for any rule whose other conditions also match (e.g. `cap_user_first_time` if present), OR `pfc2` hasn't been restarted since the doc was updated. Send a chat message — if the reply text is also empty, `context_boosting_config` is also missing the host.
 
 ### What happens if you skip one
 
@@ -709,8 +721,9 @@ If `output` is `null` or absent entirely (rather than an empty array), the cogbo
 | Mutation 1 — CAM CORS | Public chat widget shows "Unable to connect to Buddy". DevTools shows CORS preflight failures on `<CAM_URL>/init`. |
 | Mutation 2 — CMG ALLOWED_ORIGINS | Landing page renders but geofence probe fails. DevTools shows CORS preflight failure on `<CMG_URL>/auth/geofence/check`. Sign-in may also fail depending on which CMG endpoint runs first. |
 | Mutation 3 — App ID redirect URLs | Sign-in popup opens, user enters credentials, App ID responds with `redirect_uri_mismatch` and refuses to redirect back. User is stranded on the App ID error page. |
-| Mutation 4 (host recognition) — Cogbot major config | All HTTP calls succeed (sessions, init, message stream all return 200), chat input is enabled, but the bot's reply text is empty. Looks like a parsing bug in the SPA but is actually a backend config issue. |
-| Mutation 4 (welcome string) — Cogbot major config | Anonymous and authenticated chat both work for sent messages, but the initial greeting on page load is empty. Benign — chat is still usable. |
+| Mutation 4 chat-host list (`context_boosting_config.cap_host_url.$contains`) | All HTTP calls succeed (sessions, init, message stream all return 200), chat input is enabled, but the bot's reply text is empty. Looks like a parsing bug in the SPA but is actually a backend config issue. |
+| Mutation 4 greeting-host list (`welcome_message_config.cap_host_url.$contains`) | Sent messages get real responses, but the initial greeting on page load is empty. Benign — chat is still usable, but new visitors see a "dead" widget until they type something. |
+| Mutation 4 cache flush (`pfc2` not restarted) | The Cloudant doc has been updated correctly but the symptoms above persist for an unbounded time. `pfc2` reads the major config once at startup and caches in-process — until you restart it, you're effectively still on the old config. |
 
 ---
 
@@ -777,8 +790,10 @@ Cross-references back to the path sections where the deeper context lives.
 | Sign-in works but user lands on Access Denied | Email not in Cloudant whitelist OR `SITE_NAMESPACE` mismatch between SPA and Cloudant cogbot doc | Cross-check namespace; ask your CogAbility contact to add the email or enable auto-provisioning |
 | `AuthClient` throws `window is not defined` in Path 2 or 3 | `AuthClient` used in a server-rendered context (Next.js server component, TanStack Start server function, SSR framework) | Mark the consuming component as client-only; `AuthClient` is browser-only. Other SDK clients (`CamClient`, `CmgClient`) work on both |
 | `/callback` returns 404 on `*.lovable.app` (or other host without SPA fallback) | Static host doesn't rewrite unknown paths to `index.html` (Path 1 only — Path 2 uses TanStack Start with worker-level routing and does not have this problem) | Path 1: set `VITE_ROUTER_MODE=hash` in `.env.production`, redeploy, register the site root (not `/callback`) in App ID. See [Step 4a static host caveat](#step-4a--deploy-to-lovable). Path 2: should not happen — verify Lovable's TanStack Start routing is intact |
-| Bot's reply text is empty even though chat input works and HTTP 200 is returned | Cogbot major config doesn't recognize the origin (Mutation 4 host recognition skipped). Common after a customer URL change. | See [Mutation 4](#mutation-4-cogbot-major-config-host-recognition--welcome-message). Ask CogAbility ops to add the origin to the cogbot's host config |
-| Initial chat greeting is empty but sent messages get real responses | Cogbot major config recognizes the host but no welcome message string is configured for it (Mutation 4 welcome string skipped) | Benign — chat is fully usable. Ask CogAbility ops to set a welcome string for the origin if you want one |
+| Bot's reply text is empty even though chat input works and HTTP 200 is returned | Origin not in `context_boosting_config[*].cap_host_url.$contains` (Mutation 4 chat-host list). Common after a customer URL change. | See [Mutation 4](#mutation-4-cogbot-major-config-host-recognition--welcome-message). Ops adds the origin AND restarts both `cam-manager` and `pfc2` |
+| Initial chat greeting is empty but sent messages get real responses | Origin not in `welcome_message_config[*].cap_host_url.$contains` (a SEPARATE host list from the chat list — Mutation 4 has two) | Ops adds the origin to the welcome-message rule AND restarts `pfc2` (not just `cam-manager` — `pfc2` generates the greeting and caches the major config independently) |
+| Greeting is still empty after ops added the host to `welcome_message_config` and restarted `cam-manager` | `pfc2` was not restarted. `pfc2` generates greetings and caches the major config in-process; only its restart picks up the Cloudant change | `kubectl -n mc-cap1 rollout restart deployment pfc2` |
+| Bot text appears but with raw HTML markup visible (`<p>`, `<img/>`, `<strong>` shown literally) | Bot text is intentionally HTML (cogbot author writes `<p>...</p>` for paragraph breaks, `<img>` for inline images, `<strong>` for emphasis). Magic prompt's first-cut `CogBotChat.tsx` renders message text as plain JSX text | Render via `dangerouslySetInnerHTML`. Bot text is server-controlled trusted HTML — same pattern the kit uses (`packages/membership-kit/src/components/BuddyChat.jsx`). See the iterate-prompt in [`docs/lovable-sdk-integration-prompt.md`](docs/lovable-sdk-integration-prompt.md#bot-text-shows-raw-html-markup-p-img-strong-visible-literally) for the exact retrofit |
 | `CamClient.parseResponseGeneric(greeting)` returns empty array even though greeting fetch returned 200 | The greeting endpoint returns `{output: Generic[]}` with the array at `.output` directly, NOT at `.output.generic`. `parseResponseGeneric` is for `sendMessage` / `streamMessage final_response` shape. | Iterate `greeting.output` directly: `(greeting.output || []).filter(g => g.response_type === 'text' && g.text)` |
 | `streamMessage` fires events but the bot text never renders | Only listening for `partial_object` events. Fast or non-streaming responses skip `partial_object` and put the full text in `final_response`. | Handle both: `if (eventName === "partial_object" \|\| eventName === "final_response")`. See the React (Path 2) and Vue (Path 3) examples for the validated pattern |
 | TanStack Start prerender shows React hydration error #419 in DevTools | Benign — TanStack Start tries to SSR the route, the SDK constructors run during hydration with mismatched DOM, React falls back to a full client render. The page works fine after the warning. | No fix needed for normal use. If it bothers you, mark the SDK-importing routes as client-only via TanStack Start's `client_only` directive convention |
