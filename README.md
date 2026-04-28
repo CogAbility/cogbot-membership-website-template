@@ -107,7 +107,7 @@ Your CogAbility contact will provide a credentials sheet with these values:
 | CMG URL | Your CogBot Membership Gateway instance |
 | Site Namespace | Ties your site to the correct member roles |
 | CAM URL | Your CogBot Access Manager (CAM) instance — handles chat sessions and streaming |
-| CogBot ID | The specific CogBot for your site |
+| CogBot ID | The specific CogBot for your site (e.g. `mc_0091:full`) |
 
 If you don't have these yet, reach out to your CogAbility contact before starting.
 
