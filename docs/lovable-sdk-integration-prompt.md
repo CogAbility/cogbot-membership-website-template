@@ -234,6 +234,15 @@ import { cam, CamClient } from "@/lib/cogability";
 
 type Msg = { role: "user" | "bot"; text: string };
 
+// Bot text from the cogbot is intentionally HTML (paragraphs, inline images,
+// emphasis tags). Rendering it as plain JSX text shows raw <p>/<img>/<strong>
+// markup. The cogbot is a trusted server-controlled source, so we render via
+// dangerouslySetInnerHTML — same pattern the official kit uses. We also
+// rewrite anchors to open in a new tab. User input is rendered as plain text.
+function prepareBotHtml(html: string): string {
+  return html.replace(/<a\s/gi, '<a target="_blank" rel="noopener noreferrer" ');
+}
+
 export function CogBotChat({ idToken }: { idToken?: string }) {
   const [ready, setReady] = useState(false);
   const [messages, setMessages] = useState<Msg[]>([]);
@@ -284,7 +293,15 @@ export function CogBotChat({ idToken }: { idToken?: string }) {
       <div style={{ minHeight: 200, marginBottom: 12 }}>
         {messages.map((m, i) => (
           <div key={i} style={{ marginBottom: 8 }}>
-            <strong>{m.role === "user" ? "You" : "Bot"}:</strong> {m.text}
+            <strong>{m.role === "user" ? "You" : "Bot"}:</strong>{" "}
+            {m.role === "user" ? (
+              m.text
+            ) : (
+              <span
+                style={{ display: "inline-block" }}
+                dangerouslySetInnerHTML={{ __html: prepareBotHtml(m.text) }}
+              />
+            )}
           </div>
         ))}
       </div>
@@ -468,7 +485,43 @@ You restored the email/password form at src/routes/auth.tsx. Replace its entire 
 
 ### Bot replies are empty even though messages send
 
-Symptoms: "You: ..." appears, "Bot:" stays empty. The CAM network calls return 200. **Cause: cogbot major config doesn't recognize your origin yet.** This is on the CogAbility ops side — they need to add your `https://<slug>.lovable.app` origin to the cogbot's host config. Contact your CogAbility contact and reference [`tools/provision-lovable-customer.sh`](../tools/provision-lovable-customer.sh).
+Symptoms: "You: ..." appears, "Bot:" stays empty. The CAM network calls return 200. **Cause: your origin isn't in the cogbot's chat-host list (`context_boosting_config[*].cap_host_url.$contains` in the major config) — OR the list was updated but `pfc2` wasn't restarted.** Both are on the CogAbility ops side. Contact your CogAbility contact and reference [`tools/provision-lovable-customer.sh`](../tools/provision-lovable-customer.sh).
+
+### Initial greeting is empty even though typed messages get real replies
+
+Symptoms: chat opens with no welcome message, but if you type something the bot answers normally. **Cause: the cogbot's greeting list is a SEPARATE host list (`welcome_message_config[*].cap_host_url.$contains`) from the chat list above. Adding your origin to one does NOT add it to the other.** Even after the doc is updated, `pfc2` (which generates greetings) caches the major config in-process, so it must be restarted in addition to `cam-manager`. Same fix as above — flag both lists + `pfc2` restart to your CogAbility contact.
+
+### Bot text shows raw HTML markup (`<p>`, `<img/>`, `<strong>` visible literally)
+
+Symptoms: bot replies contain visible `<p>`, `<img />`, `<strong>` tags. **Cause: the cogbot's text is intentionally HTML (paragraphs, inline images, emphasis); the first-cut `CogBotChat.tsx` from this prompt rendered it as plain JSX text.** This is fixed in the latest version of the prompt. **Recovery prompt** for an existing Lovable site that was created from an earlier version:
+
+```
+In src/components/CogBotChat.tsx, change the bot message rendering so bot text
+is rendered as HTML, not plain text. User input must remain plain text.
+
+Add this helper at the top of the file (right after the type Msg = ... line):
+
+  function prepareBotHtml(html: string): string {
+    return html.replace(/<a\s/gi, '<a target="_blank" rel="noopener noreferrer" ');
+  }
+
+Replace the JSX line that currently renders the message text with this exact pattern:
+
+  <strong>{m.role === "user" ? "You" : "Bot"}:</strong>{" "}
+  {m.role === "user" ? (
+    m.text
+  ) : (
+    <span
+      style={{ display: "inline-block" }}
+      dangerouslySetInnerHTML={{ __html: prepareBotHtml(m.text) }}
+    />
+  )}
+
+Do not modify any other file. Do not install any package. Bot text is
+server-controlled trusted HTML from the CogAbility cogbot — dangerouslySetInnerHTML
+is the correct rendering choice and matches the official @cogability/membership-kit
+reference component.
+```
 
 ### Sign-in lands on App ID's `redirect_uri_mismatch` error
 
