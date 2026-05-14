@@ -464,17 +464,14 @@ cogbot-membership-website-template/
   src/
     main.jsx              <- Entry point — imports { App } from @cogability/membership-kit and renders it with your config
     index.css             <- Design tokens (CSS custom properties) and global styles
-    components/
-      BuddyChat.jsx       <- Template-local chat component extending the kit's BuddyChat with New Chat + View Transcript
-    services/
-      submitHistory.js    <- Delegates to cam.fetchConversationHistory() for the View Transcript feature
+    MembersPage.jsx       <- Authenticated members layout (overrides the kit default)
   vite.config.js          <- Build config, dev proxy (CAM), and site-meta plugin
   tailwind.config.js      <- Tailwind v3 config (scans index.html, src/, and the published kit's src/)
   eslint.config.js        <- ESLint flat config (React 19)
   postcss.config.js
 ```
 
-The `src/components/BuddyChat.jsx` and `src/services/submitHistory.js` files are **template-local customizations** that add two features on top of the kit's default `BuddyChat` component: a **New Chat** button in the header and a **View Transcript** panel in the footer. These are the escape-hatch pattern described above — the kit provides the primitives, and these files wire them into the specific UX for this template.
+The **New Chat** button and **View Transcript** panel are part of the kit's `BuddyChat` component itself — they appear on the public landing page (anonymous users) and the authenticated members page without any template-level customization required.
 
 The rest of the template UI lives in `node_modules/@cogability/membership-kit`, installed from npm. The kit's source repo is [`CogAbility/cogability-packages`](https://github.com/CogAbility/cogability-packages) — that's where you go to contribute to the kit, file kit bugs, or browse kit source.
 
@@ -489,7 +486,7 @@ If you need to fork the kit itself, work in `cogability-packages` and either pub
 
 ## Chat Features
 
-The members page chat widget (`src/components/BuddyChat.jsx`) includes two features beyond the standard kit `BuddyChat`:
+The kit's `BuddyChat` component includes two session-management features available to all users (anonymous and authenticated):
 
 ### New Chat
 
