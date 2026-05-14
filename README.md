@@ -464,13 +464,19 @@ cogbot-membership-website-template/
   src/
     main.jsx              <- Entry point — imports { App } from @cogability/membership-kit and renders it with your config
     index.css             <- Design tokens (CSS custom properties) and global styles
+    components/
+      BuddyChat.jsx       <- Template-local chat component extending the kit's BuddyChat with New Chat + View Transcript
+    services/
+      submitHistory.js    <- Delegates to cam.fetchConversationHistory() for the View Transcript feature
   vite.config.js          <- Build config, dev proxy (CAM), and site-meta plugin
   tailwind.config.js      <- Tailwind v3 config (scans index.html, src/, and the published kit's src/)
   eslint.config.js        <- ESLint flat config (React 19)
   postcss.config.js
 ```
 
-The template is a single-app Vite project. **All reusable UI lives in `node_modules/@cogability/membership-kit`**, installed from npm. The kit's source repo is [`CogAbility/cogability-packages`](https://github.com/CogAbility/cogability-packages) — that's where you go to contribute to the kit, file kit bugs, or browse kit source. From this template's perspective, the kit is just a normal npm dependency.
+The `src/components/BuddyChat.jsx` and `src/services/submitHistory.js` files are **template-local customizations** that add two features on top of the kit's default `BuddyChat` component: a **New Chat** button in the header and a **View Transcript** panel in the footer. These are the escape-hatch pattern described above — the kit provides the primitives, and these files wire them into the specific UX for this template.
+
+The rest of the template UI lives in `node_modules/@cogability/membership-kit`, installed from npm. The kit's source repo is [`CogAbility/cogability-packages`](https://github.com/CogAbility/cogability-packages) — that's where you go to contribute to the kit, file kit bugs, or browse kit source.
 
 To customize beyond `site.config.js` styling, you have two escape hatches:
 
@@ -478,6 +484,33 @@ To customize beyond `site.config.js` styling, you have two escape hatches:
 2. **Use the kit pieces directly** — drop `import { useBuddyChat, useAuthorization } from '@cogability/membership-kit'` in any of your own components. The kit re-exports its primitives.
 
 If you need to fork the kit itself, work in `cogability-packages` and either publish a new version or use `npm link` for local iteration.
+
+---
+
+## Chat Features
+
+The members page chat widget (`src/components/BuddyChat.jsx`) includes two features beyond the standard kit `BuddyChat`:
+
+### New Chat
+
+A pencil icon button in the chat header. Clicking it:
+
+1. Rotates the `chat_id` — `cam.rotateChatId()` mints a new UUID so PFC2 opens a fresh LangGraph RAG checkpoint. The previous conversation history is preserved server-side but is no longer reachable from this session.
+2. Clears the message list and any loaded transcript.
+3. Re-runs the full init sequence so the user receives a fresh greeting.
+
+This is implemented via `useBuddyChat().retry()`, which calls `cam.rotateChatId()` before re-initializing.
+
+### View Transcript
+
+A "View Transcript" button in the chat footer (visible once the conversation has at least one message). Clicking it fetches the current DI + RAG conversation thread from PFC2 and renders it inline as a collapsible transcript panel:
+
+- **Turns:** each human/assistant exchange is shown in order. SDI turns are excluded — SDI manages its own short-term context window independently.
+- **Summary block:** if the conversation is long enough for PFC2's `SummarizationMiddleware` to have triggered, a summarized prefix is shown above the recent exchanges (in an amber callout block). This ensures the full context is visible even after older turns have been condensed.
+
+The transcript is retrieved via `cam.fetchConversationHistory()` → `GET /api/cogbots/{id}/id/{uid}/conversation-history?chat_id=<current>`. No data leaves the browser beyond this read-only API call.
+
+See [`@cogability/sdk` README](https://www.npmjs.com/package/@cogability/sdk) → "Chat sessions and conversation history" for the full API reference. See [`be-pfc/docs/configuration.md`](https://github.com/CogAbility/be-pfc/blob/pfc-2.0/docs/configuration.md#short-term-memory-summarizationmiddleware) for `SummarizationMiddleware` configuration.
 
 ---
 
