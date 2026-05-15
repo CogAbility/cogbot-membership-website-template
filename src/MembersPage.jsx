@@ -1,7 +1,6 @@
 import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { useAuth, useSiteConfig } from '@cogability/membership-kit';
-import BuddyChat from './components/BuddyChat';
+import { useAuth, useSiteConfig, BuddyChat } from '@cogability/membership-kit';
 
 /**
  * Thin wrapper around the full members layout that gates BuddyChat (and the
