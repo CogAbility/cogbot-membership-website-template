@@ -11,7 +11,7 @@
     "preview": "vite preview"
   },
   "dependencies": {
-    "@cogability/membership-kit": "^0.2.0",
+    "@cogability/membership-kit": "^0.3.2",
     "@cogability/sdk": "^0.1.1",
     "oidc-client-ts": "^3.5.0",
     "react": "^19.2.4",
@@ -19,12 +19,12 @@
     "react-router-dom": "^7.14.0"
   },
   "devDependencies": {
-    "concurrently": "^9.1.2",
     "@eslint/js": "^9.39.4",
     "@types/react": "^19.2.14",
     "@types/react-dom": "^19.2.3",
     "@vitejs/plugin-react": "^6.0.1",
     "autoprefixer": "^10.4.27",
+    "concurrently": "^9.1.2",
     "eslint": "^9.39.4",
     "eslint-plugin-react-hooks": "^7.0.1",
     "eslint-plugin-react-refresh": "^0.5.2",
