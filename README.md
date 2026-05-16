@@ -66,7 +66,8 @@ Browser (React SPA)
                     ├─ 2. Member geofence (if enabled)
                     │     └─ Blocked → geofence message shown (even existing members)
                     │
-                    └─ 3. Cloudant whitelist lookup
+                    └─ 3. Cloudant whitelist lookup (shared DB — also used by CTM and be-pfc)
+                          │       roles[] is multi-namespace; namespace param filters which roles are returned
                           │
                           ├─ Not in whitelist, auto-provisioning enabled
                           │     ├─ New-signup geofence check (if enabled)
@@ -532,7 +533,7 @@ This is a pure static SPA. All server-side logic lives in external services:
 | **`@cogability/sdk`** | Framework-agnostic HTTP client layer — `CamClient` (chat/sessions), `CmgClient` (membership/geofencing), `AuthClient` (OIDC). Used by the kit internally; also importable directly in Vue, vanilla JS, or Node.js agents. Source: [`CogAbility/cogability-packages`](https://github.com/CogAbility/cogability-packages). |
 | **App ID** | Authentication — issues JWTs, supports email/password and social login (Google, etc.) |
 | **CMG** | Membership validation — verifies JWTs, checks Cloudant, returns roles and `autoProvisioned` flag |
-| **Cloudant** | Source of truth for whitelist entries and role definitions |
+| **Cloudant** | Shared `whitelist` DB (one doc per user, multi-namespace `roles[]`, consumed by CTM, CMG, and be-pfc) and `users` DB (post-login canonical user record, `_id` is the LTM `user_id` in Pinecone). Also stores `roles` definitions and `cogability` config. |
 | **CAM** | CogBot Access Manager — session management, auth header injection, SSE streaming relay, routes messages to be-pfc. Each CAM instance independently controls streaming via `STREAM_MESSAGES`. |
 | **be-pfc** | AI cascade (LangGraph), long-term memory via Mem0 + Pinecone |
 

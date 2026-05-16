@@ -549,7 +549,7 @@ CAM reads its CORS whitelist from a Cloudant document every 5 minutes. No CAM re
 
 **Naming gotcha — read carefully.** Cloudant has two databases with similar names:
 
-- `whitelist` — this is the CMG member-access allowlist (emails). **NOT what we want.**
+- `whitelist` — this is the **shared platform member-access store** consumed by CTM, CMG, and be-pfc (one doc per user, keyed by lowercased email, with a `roles[]` array spanning all namespaces). **NOT what we want for CORS.**
 - `cors-whitelist` — this is the CAM CORS allowlist. **This is the one.**
 
 Inside `cors-whitelist`, each doc has a field literally named `whitelist` which is the array of allowed origins. So the target is `cors-whitelist` DB → doc `<CORS_WHITELIST_KEY>` → field `whitelist`.
