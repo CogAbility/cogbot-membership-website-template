@@ -508,6 +508,16 @@ A "View Transcript" button in the chat footer (visible once the conversation has
 
 The transcript is retrieved via `cam.fetchConversationHistory()` → `GET /api/cogbots/{id}/id/{uid}/conversation-history?chat_id=<current>`. No data leaves the browser beyond this read-only API call.
 
+### Previous Chats sidebar (custom UI)
+
+> **Available in `@cogability/sdk@0.4.0+`. Authenticated members only.**
+
+For sites that want a multi-conversation "Previous Chats" sidebar (a la babybrain.ai or ChatGPT's left rail), the SDK exposes `cam.listConversations()` which returns the signed-in member's recent chat threads (`{ chat_id, last_updated, title, turn_count }[]`, capped at 50, newest first). Pair it with `cam.fetchConversationHistory(chatId)` (also new in 0.4.0 — accepts an explicit `chat_id` argument) to load any past thread on click.
+
+The kit's default `BuddyChat` component does not yet render a sidebar — this is a custom-UI feature. To use it, override `MembersPage` (see [Page overrides](#page-overrides) above) and build the sidebar against the SDK directly. A worked example is the Build a Brain Lovable site, whose Members page renders the same sidebar with a desktop two-column layout and a mobile drawer.
+
+See the [`@cogability/sdk` README](https://www.npmjs.com/package/@cogability/sdk) → "Listing a member's prior conversations" for the API reference and code samples.
+
 See [`@cogability/sdk` README](https://www.npmjs.com/package/@cogability/sdk) → "Chat sessions and conversation history" for the full API reference. See [`be-pfc/docs/configuration.md`](https://github.com/CogAbility/be-pfc/blob/pfc-2.0/docs/configuration.md#short-term-memory-summarizationmiddleware) for `SummarizationMiddleware` configuration.
 
 ---
