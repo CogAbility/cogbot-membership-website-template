@@ -181,6 +181,14 @@ export default {
     memberEmoji: '\u{1F9E0}',
   },
 
+  // Chat widget
+  chat: {
+    limitHintTemplate: '{remaining} of {limit} free messages left today',
+    limitReachedHeading: "You've used your free messages for today",
+    limitReachedBody: 'Become a Build a Brain member for higher usage limits — it\'s free!',
+    limitReachedCtaLabel: "Become a Member — it's free!",
+  },
+
   // Footer
   footer: {
     brandName: 'Buddy',
