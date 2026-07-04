@@ -239,7 +239,7 @@ function StepAllSet({ parentData, childrenData, onComplete, onBack, isSaving, sa
 
 export default function OnboardingPage() {
   const { onboarding: c } = useSiteConfig();
-  const { user, cmg } = useAuth();
+  const { user, cmg, markProfileSaved } = useAuth();
   const navigate = useNavigate();
 
   const steps = [c.step1Label, c.step2Label, c.step3Label];
@@ -271,9 +271,13 @@ export default function OnboardingPage() {
       .catch((err) => console.warn('OnboardingPage: getProfile failed', err));
   }, [user?.idToken]);
 
-  function markOnboardingComplete() {
+  // Session-scoped guard so a member who skips (or whose save failed) isn't
+  // immediately bounced back to /onboarding by the /members guard within the
+  // same session. Deliberately sessionStorage — a profile removed server-side
+  // (e.g. via the CU Admin CMM) must re-prompt onboarding on the next visit.
+  function markOnboardingSkipped() {
     if (user?.uid) {
-      localStorage.setItem(`onboarded_${user.uid}`, '1');
+      sessionStorage.setItem(`onboarding_skipped_${user.uid}`, '1');
     }
   }
 
@@ -284,21 +288,12 @@ export default function OnboardingPage() {
     }
   }
 
-  const goToMembers = useCallback(async () => {
-    markOnboardingComplete();
-    try {
-      await cmg.saveProfile(user?.idToken, {
-        parent: parentData,
-        children: childrenData,
-      });
-    } catch (err) {
-      console.warn('Onboarding skip: profile save failed', err);
-    }
+  const goToMembers = useCallback(() => {
+    markOnboardingSkipped();
     navigate('/members', { replace: true });
-  }, [navigate, cmg, user?.idToken, parentData, childrenData]);
+  }, [navigate, user?.uid]);
 
   async function handleComplete() {
-    markOnboardingComplete();
     persistProfileLocally();
     setIsSaving(true);
     setSaveError(null);
@@ -307,10 +302,12 @@ export default function OnboardingPage() {
         parent: parentData,
         children: childrenData,
       });
+      markProfileSaved();
     } catch (err) {
       console.error('Onboarding: failed to save profile', err);
       setSaveError(c.profileSaveErrorWarning || 'We had trouble saving your profile, but you can still chat.');
     } finally {
+      markOnboardingSkipped();
       setIsSaving(false);
       navigate('/members', { replace: true });
     }
