@@ -11,8 +11,8 @@
     "preview": "vite preview"
   },
   "dependencies": {
-    "@cogability/membership-kit": "^0.6.0",
-    "@cogability/sdk": "^0.5.3",
+    "@cogability/membership-kit": "^0.7.0",
+    "@cogability/sdk": "^0.7.0",
     "oidc-client-ts": "^3.5.0",
     "react": "^19.2.4",
     "react-dom": "^19.2.4",
