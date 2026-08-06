@@ -103,7 +103,7 @@ Your CogAbility contact will provide a credentials sheet with these values:
 
 | Value | What it is |
 |---|---|
-| App ID Client ID | Identifies your authentication app |
+| App ID Client ID | Identifies your authentication app. CogAbility creates the App ID application for you, and it must be created as a **confidential** client (`regularwebapp`) rather than a public one (`singlepageapp`) — a public client can be used to sign in without MFA. Your browser never handles the client secret; CMG attaches it during the token exchange. See [`deployment_guidance.md` — Provisioning the App ID application](deployment_guidance.md#provisioning-the-app-id-application-cogability-ops). |
 | App ID OAuth Server URL | IBM App ID endpoint for login |
 | CMG URL | Your CogBot Membership Gateway instance |
 | Site Namespace | Ties your site to the correct member roles |
