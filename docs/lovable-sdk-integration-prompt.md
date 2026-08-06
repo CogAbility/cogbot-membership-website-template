@@ -14,6 +14,8 @@
    - `COGBOT_ID`
    - `SITE_NAMESPACE`
 
+   *`APPID_CLIENT_ID` identifies an App ID application that CogAbility creates as a confidential client (`regularwebapp`). You will not be given a client secret and must not paste one into your Lovable project — CMG holds the secret and attaches it during the token exchange, which is what the `tokenEndpointProxy` line in STEP 2 is for. Background: [`deployment_guidance.md` — Provisioning the App ID application](../deployment_guidance.md#provisioning-the-app-id-application-cogability-ops).*
+
    *If your CogAbility contact's email lists these values with a `VITE_` prefix (e.g. `VITE_APPID_CLIENT_ID`, `VITE_CMG_URL`, `VITE_COGBOT_HOST`), drop the prefix when substituting — they are the same values. The `VITE_` form is from the Path 1 React-template convention; Path 2 hardcodes them into `src/lib/cogability.ts` instead of reading from environment variables, so the unprefixed names are what appears in the prompt below. Mapping: `VITE_APPID_CLIENT_ID` → `APPID_CLIENT_ID`, `VITE_APPID_OAUTH_SERVER_URL` → `APPID_OAUTH_SERVER_URL`, `VITE_CMG_URL` → `CMG_HOST`, `VITE_SITE_NAMESPACE` → `SITE_NAMESPACE`, `VITE_COGBOT_HOST` → `CAM_HOST`, `VITE_COGBOT_ID` → `COGBOT_ID`.*
 2. **Confirm CogAbility ops has run the per-customer onboarding** for your site URL (this allowlists your origin in CAM CORS, CMG, App ID, and the cogbot's host config). One command on their end — see [`tools/provision-lovable-customer.sh`](../tools/provision-lovable-customer.sh). Without this, you'll see a working chat input that responds with empty messages, and sign-in will fail with `redirect_uri_mismatch`.
 3. **Replace the six placeholders** in the prompt below with your actual values before pasting.
@@ -81,8 +83,11 @@ export const auth = new AuthClient({
   authorityUrl: APPID_OAUTH_SERVER_URL,
   clientId: APPID_CLIENT_ID,
   redirectUri: typeof window !== "undefined" ? `${window.location.origin}/callback` : "",
-  // Routes the OIDC token exchange through the CMG proxy because App ID's token
-  // endpoint does not allow CORS from browser origins. Do not change this line.
+  // Routes the OIDC token exchange through the CMG proxy. Two reasons: App ID's
+  // token endpoint does not allow CORS from browser origins, and the App ID
+  // application is a confidential client, so the exchange requires a client
+  // secret that CMG attaches server-side and the browser must never hold.
+  // Do not change this line.
   tokenEndpointProxy: `${CMG_HOST}/auth/token`,
 });
 

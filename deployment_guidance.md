@@ -42,7 +42,7 @@ Six configuration values wire your site to this backend, regardless of path:
 
 | Value | What it is | Where it goes |
 |---|---|---|
-| `APPID_CLIENT_ID` | App ID application client ID | `AuthClient` (OIDC login) |
+| `APPID_CLIENT_ID` | App ID application client ID. The application behind it must be a **confidential** client (`regularwebapp`), never a public one (`singlepageapp`) — see [Provisioning the App ID application](#provisioning-the-app-id-application-cogability-ops). CogAbility ops creates it; if you have console access and see no client secret on the application, flag it to your CogAbility contact. | `AuthClient` (OIDC login) |
 | `APPID_OAUTH_SERVER_URL` | App ID OAuth server URL (tenant-specific) | `AuthClient` (OIDC discovery) |
 | `CMG_URL` | Your deployed CMG base URL | `CmgClient` |
 | `SITE_NAMESPACE` | Namespace key for member roles | `CmgClient` |
@@ -523,6 +523,24 @@ console.log(await cmg.checkGeofence());
 
 ---
 
+## Provisioning the App ID application (CogAbility ops)
+
+Every member site is backed by its own App ID application on the CogAbility tenant. **CogAbility ops creates that application** — the customer never does; they only receive the resulting `APPID_CLIENT_ID` on their credentials sheet. This section is for whoever creates it.
+
+### The application must be a confidential client (`regularwebapp`)
+
+Create the application as a **regular web application** — App ID type `regularwebapp`, a *confidential* client, which authenticates with a client ID **and a client secret**. Do **not** create it as a **single page application** — App ID type `singlepageapp`, a *public* client, which authenticates with no secret at all. The type is chosen when the application is created.
+
+**Why this matters.** App ID's token endpoint accepts the resource-owner-password-credentials grant (`grant_type=password`), and that grant cannot be turned off at the tenant level. Against a **public** client, anyone who knows the client ID can POST a username and password directly to the token endpoint with an empty client secret and receive real, validly-signed App ID tokens — **without ever being challenged for MFA**, because the password grant never touches App ID's hosted login widget, which is where MFA is enforced. And the client ID is not a secret: it ships in the public JavaScript bundle of every site that uses it (see [Step 3](#step-3--add-production-env-vars)). Against a **confidential** client, the same request fails at client authentication *before* the password is ever evaluated, because the caller cannot produce the client secret. The application type is the only thing standing between a member site and an MFA-free login path.
+
+**The browser never holds the client secret, and does not need to.** These sites do not call App ID's token endpoint directly — the OIDC code-for-token exchange is routed through CMG's `/auth/token` endpoint, and CMG attaches the client secret server-side. That is why a confidential client works fine for a browser-based SPA in this architecture, and it is why the SDK's `tokenEndpointProxy` setting is load-bearing for sign-in rather than merely a CORS workaround. Path 1 gets this wiring from `@cogability/membership-kit`; Path 2 sets it explicitly in `src/lib/cogability.ts` (see [`docs/lovable-sdk-integration-prompt.md`](docs/lovable-sdk-integration-prompt.md) Step 2); Path 3 must set it too if it uses `AuthClient` in a browser.
+
+**The type cannot be changed after the application is created.** The App ID management API will accept a `PUT` that changes an application's `type` field and return HTTP 200, but it silently ignores the change — the application stays public and stays reachable by the password grant. The only remedy is to **delete the application and create a new one**, which issues a **new client ID**. That means re-issuing the customer's credentials sheet and updating every consumer of the old ID: their build-time config (`VITE_APPID_CLIENT_ID` in `.env.production`, or the hardcoded `APPID_CLIENT_ID` in `src/lib/cogability.ts` for Path 2), a redeploy, and re-registering all web redirect URLs on the new application ([Mutation 3](#mutation-3-app-id-web-redirect-urls-ibm-cloud-ui)). There is no in-place fix, so getting the type right at creation time genuinely matters.
+
+**Sanity check before you hand out the client ID.** Open the application in the App ID console's Applications list (steps 1–5 of [Mutation 3](#mutation-3-app-id-web-redirect-urls-ibm-cloud-ui) get you there) and confirm it exposes a **client secret** alongside the client ID. A confidential client has one; a public client does not. If there is no secret, the application is public and must be replaced rather than edited.
+
+---
+
 ## Backend allowlisting
 
 Your site's production origin must be added to **four** separate allowlists before the SDK works end-to-end. If any of the four is missing, you get a specific failure mode listed in [What happens if you skip one](#what-happens-if-you-skip-one). This section applies equally to Paths 1, 2, and 3.
@@ -647,6 +665,8 @@ Why `stringData` and not `data`: `stringData` accepts raw strings and lets Kuber
 
 App ID's redirect URL list is not exposed via a public API — it must be edited in the IBM Cloud console.
 
+> While you are in the Applications list: confirm the application is a **confidential** client (`regularwebapp`) and not a public one (`singlepageapp`). A public client is reachable by App ID's password grant with no MFA, and its type cannot be corrected in place. See [Provisioning the App ID application](#provisioning-the-app-id-application-cogability-ops).
+
 1. Go to [cloud.ibm.com](https://cloud.ibm.com), log in.
 2. Navigation menu (top-left) → **Resource list** → expand **Services and software**.
 3. Find the App ID instance whose **Tenant ID** matches your tenant. Click it.
@@ -742,13 +762,15 @@ Your CogAbility contact provides a credentials sheet with these six values (plus
 
 The values are not secret in the cryptographic sense (they end up in your public JavaScript bundle) but your CogAbility contact is the source of truth for which specific instances you are connecting to. Contact: support@cogability.net (or whoever on the CogAbility team is your point of contact).
 
+Because `APPID_CLIENT_ID` is public, the App ID application behind it must be a **confidential** client (`regularwebapp`) so that knowing the client ID alone is not enough to authenticate against App ID. CogAbility ops creates the application for you — you never do — but if your setup gives you App ID console access, the application should show a client secret next to the client ID. If it doesn't, tell your CogAbility contact before going live: the fix requires a replacement application and a new client ID. Background: [Provisioning the App ID application](#provisioning-the-app-id-application-cogability-ops).
+
 ### If you are CogAbility ops
 
 Customer-facing values (the six the customer needs):
 
 | Env var | Source |
 |---|---|
-| `VITE_APPID_CLIENT_ID` | IBM Cloud console → App ID instance → Applications → app row |
+| `VITE_APPID_CLIENT_ID` | IBM Cloud console → App ID instance → Applications → app row. The application must have been created as a confidential client (`regularwebapp`) — see [Provisioning the App ID application](#provisioning-the-app-id-application-cogability-ops) before creating one for a new customer |
 | `VITE_APPID_OAUTH_SERVER_URL` | derived from App ID tenant ID: `https://us-south.appid.cloud.ibm.com/oauth/v4/<TENANT_ID>` |
 | `VITE_CMG_URL` | `https://cmg.mc-cap1.cogability.net` (public DNS) |
 | `VITE_SITE_NAMESPACE` | varies per customer namespace (e.g. `bab`, `cu3`) |

@@ -5,6 +5,18 @@
 # integration in their Lovable site can reach CAM, CMG, and App ID, and so the
 # cogbot recognises their host.
 #
+# PREREQUISITE — not automated and not checked by this script:
+#   The customer's App ID application must have been created as a CONFIDENTIAL
+#   client (App ID type `regularwebapp`), NEVER a public one (`singlepageapp`).
+#   A public client can be driven through App ID's `grant_type=password` flow by
+#   anyone who knows the client ID, which yields valid tokens with no MFA
+#   challenge; a confidential client rejects that request at client
+#   authentication because the caller has no client secret. The type CANNOT be
+#   changed after creation — correcting it means deleting the application and
+#   issuing a new client ID. Confirm the application shows a client secret
+#   before onboarding the customer.
+#   → deployment_guidance.md, "Provisioning the App ID application"
+#
 # This script is OPS-ONLY. It requires:
 #   - AWS SSO session against the production account (`aws sso login`)
 #   - kubectl context for the mc-cap1 EKS cluster (auto-set below)
